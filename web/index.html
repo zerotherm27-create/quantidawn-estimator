@@ -112,6 +112,10 @@ main{min-width:0;display:flex;flex-direction:column}
 .recent a{display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:13px;cursor:pointer;transition:padding .25s var(--ease)}
 .recent a:hover{padding-left:6px}
 .recent a span{color:var(--ink-3)}
+.ptoggle{display:flex;gap:2px;margin:0 0 6px}
+.ptoggle button{padding:5px 10px;font-size:12px;color:var(--ink-3);border:1px solid var(--line);border-radius:8px;transition:color .2s,background .2s}
+.ptoggle button.on{color:var(--ink);background:var(--line-2)}
+.pnone{padding:10px 0;color:var(--ink-3);font-size:13px;border-top:1px solid var(--line)}
 
 /* ---------- processing ---------- */
 .proc{max-width:760px;padding:64px 40px;margin:0 auto}
@@ -1384,11 +1388,13 @@ function applyState(d,live){
 }
 $("#resetBtn").onclick=async()=>{if(confirm("Clear all saved measurements, scale confirmations and edits for this project?")){try{await fetch(`/api/project/${PID}/state`,{method:"DELETE"})}catch(e){}location.href="?project="+PID}};
 $("#demoBtn").onclick=()=>{location.href="?project="+PID+(DEMO_AI?"":"&demo_ai=1")};
+function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
+function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}
 async function boot(){
   let empty=false;
   if(!QS.get("project")){      // no project chosen: open the first one, or the upload screen when there are none (a fresh hosted install)
     try{const pr=await (await fetch("/api/projects")).json();
-      if(!pr.length)empty=true;else if(!pr.some(p=>p.id===PID))PID=pr[0].id}catch(e){}
+      if(!pr.length)empty=true;else if(!pr.some(p=>p.id===PID)){const me=QD_USER,own=me&&pr.find(p=>p.owner===me);PID=(own||pr[0]).id}}catch(e){}
   }
   try{
     if(empty){PROJ={id:"",name:"No project yet",engineer:"",rev:"",status:"",groups:[],lines:[],skipped:[],state:null,
@@ -1415,7 +1421,10 @@ async function boot(){
   $("#demoBtn").textContent=DEMO_AI?"Hide demo AI check":"Demo AI check";
   if(DEMO_AI){const el=$("#saveLbl");if(el)el.textContent="Demo AI data, not saved"}
   try{const pr=await (await fetch("/api/projects")).json();
-    $("#recent").innerHTML=pr.map(p=>`<a href="?project=${encodeURIComponent(p.id)}" style="${p.id===PID?"font-weight:600":""}">${esc(p.name)} <span class="num">${esc(p.note)}</span></a>`).join("")}catch(e){}
+    const me=QD_USER,mine=lsGet("qd-projects")==="mine"&&!!me,list=mine?pr.filter(p=>p.owner===me):pr;
+    $("#recent").innerHTML=`<div class="ptoggle" role="group" aria-label="Which projects to list"><button data-pf="all" class="${mine?"":"on"}">All</button><button data-pf="mine" class="${mine?"on":""}">My projects</button></div>`
+      +(list.length?list.map(p=>`<a href="?project=${encodeURIComponent(p.id)}" style="${p.id===PID?"font-weight:600":""}">${esc(p.name)} <span class="num">${esc(p.note)}${p.owner?" &middot; "+esc(p.owner):""}</span></a>`).join(""):`<div class="pnone">You haven't created a project yet.</div>`);
+    $$("#recent [data-pf]").forEach(b=>b.onclick=()=>{lsSet("qd-projects",b.dataset.pf);location.reload()})}catch(e){}
   {const up=!!(PROJ.id&&!PROJ.sample);const rb=document.getElementById("readBtn"),ab=document.getElementById("aiBtn");if(rb)rb.hidden=!up;if(ab)ab.hidden=!(up&&LINES.length)}
   if(empty)go("upload");else if(!LINES.length)go("review");
   renderAll();

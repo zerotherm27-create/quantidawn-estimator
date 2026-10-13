@@ -46,3 +46,9 @@ r = c.post("/api/project/boxshall/markup-pdf", json={"shapes": [shape, {"kind": 
 f = c.get(r.json["url"])
 print("markup pdf:", r.status_code, r.json["name"], "| file", f.status_code, f.mimetype, "pages", len(fitz.open(stream=f.data, filetype="pdf")),
       "| no shapes:", c.post("/api/project/boxshall/markup-pdf", json={"shapes": []}).status_code)
+
+# project owner: recorded on upload, listed, and absent on samples
+with open("samples/boxshall-brighton/marked_up.pdf", "rb") as f:
+    own = c.post("/api/projects", data={"files": (f, "ownercheck.pdf")}, content_type="multipart/form-data").json["id"]
+rows = {x["id"]: x for x in c.get("/api/projects").json}
+print("owner:", rows[own]["owner"], "| sample has owner:", "owner" in rows["boxshall"])

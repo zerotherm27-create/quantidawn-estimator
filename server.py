@@ -194,7 +194,7 @@ def projects():
         meta = json.load(open(ROOT / "samples" / SAMPLES[pid] / "meta.json"))
         out.append({"id": pid, "name": meta["name"], "sample": True, "note": "sample"})
     for _, p, _ts in get_store().doc_list("project"):
-        out.append({"id": p["id"], "name": p["name"], "sample": False, "note": f"{len(p['pages'])} sheets"})
+        out.append({"id": p["id"], "name": p["name"], "sample": False, "note": f"{len(p['pages'])} sheets", "owner": p.get("owner", "")})
     return jsonify(out)
 
 
@@ -215,7 +215,8 @@ def build_project(pid, entries):
                           "max_z": native_z(page), "src": {"pdf": stored, "page": i}})
         doc.close()
     proj = {"id": pid, "name": clean_label(Path(entries[0][0]).stem), "engineer": "", "rev": "", "status": "Uploaded",
-            "sample": False, "profile": "westgarth", "groups": [], "pages": pages, "lines": [],
+            "sample": False, "owner": g.user or "", "created": int(time.time()),
+            "profile": "westgarth", "groups": [], "pages": pages, "lines": [],
             "skipped": [], "ai": "not run",
             "message": "Pages are ready. Press Read markups to pull the legend quantities off the marked-up sheets."}
     get_store().doc_put("project", pid, proj)
