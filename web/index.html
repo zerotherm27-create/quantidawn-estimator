@@ -133,7 +133,8 @@ main{min-width:0;display:flex;flex-direction:column}
 /* ---------- review ---------- */
 .review{display:grid;grid-template-columns:minmax(380px,.74fr) minmax(0,1.26fr);height:calc(100dvh - 58px)}
 .left{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--paper)}
-.tabs{display:flex;gap:2px;padding:10px 14px 0;border-bottom:1px solid var(--line);background:var(--surface);overflow-x:auto}
+.tabs{display:flex;gap:8px;padding:10px 14px 0;border-bottom:1px solid var(--line);background:var(--surface)}
+.tabs .sheets{display:flex;gap:2px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:thin}
 .tabs button{padding:8px 11px;font-size:12.5px;color:var(--ink-3);border-bottom:2px solid transparent;white-space:nowrap;transition:color .2s}
 .tabs button:hover{color:var(--ink)}
 .tabs button.on{color:var(--ink);border-color:var(--accent)}
@@ -266,8 +267,7 @@ td.dm{color:var(--ink-2);font-size:12px}
 .tpl .foot span{color:var(--ink-2);font-size:12.5px}
 
 /* ---------- pop-out plan window ---------- */
-.tabs .grow{flex:1}
-.tabs .pop{position:sticky;right:0;z-index:1;background:var(--surface);box-shadow:-10px 0 8px -4px var(--surface);display:flex;align-items:center;gap:6px;padding:6px 10px;margin:0 0 4px;border-radius:8px;font-size:12.5px;color:var(--ink-2);border:1px solid var(--line);align-self:center;white-space:nowrap;transition:background .2s}
+.tabs .pop{flex:none;display:flex;align-items:center;gap:6px;padding:6px 10px;margin:0 0 4px;border-radius:8px;font-size:12.5px;color:var(--ink-2);border:1px solid var(--line);align-self:center;white-space:nowrap;transition:background .2s}
 .tabs .pop:hover{background:var(--line-2);color:var(--ink)}
 .away{display:none;flex:1;place-items:center;text-align:center;padding:40px;color:var(--ink-2)}
 .away b{display:block;font-size:15px;color:var(--ink);margin-bottom:6px;font-weight:600}
@@ -1094,7 +1094,8 @@ function applyFocus(){
   if(l.sheet-1!==V.page){V.flash=null;setPage(l.sheet-1)}
 }
 function renderTabs(){
-  $("#tabs").innerHTML=`<div class="grow" style="order:2"></div><button class="pop" style="order:3" id="popBtn" title="Open the plan in its own window"><svg class="i" viewBox="0 0 16 16"><path d="M9 2.500h4.500V7M13.500 2.500L7.500 8.500M11 9.500V13H3V5h3.500"/></svg>Pop out</button>`+SHEETS.map((s,i)=>`<button class="${i===V.page?"on":""}" data-sh="${i}">${s.n}<small>${s.c||"-"}</small></button>`).join("");
+  $("#tabs").innerHTML=`<div class="sheets">`+SHEETS.map((s,i)=>`<button class="${i===V.page?"on":""}" data-sh="${i}">${s.n}<small>${s.c||"-"}</small></button>`).join("")+`</div><button class="pop" id="popBtn" title="Open the plan in its own window"><svg class="i" viewBox="0 0 16 16"><path d="M9 2.500h4.500V7M13.500 2.500L7.500 8.500M11 9.500V13H3V5h3.500"/></svg>Pop out</button>`;
+  const sc=$("#tabs .sheets"),on=sc&&sc.querySelector(".on");if(on){const a=on.offsetLeft-sc.offsetLeft;if(a<sc.scrollLeft)sc.scrollLeft=a;else if(a+on.offsetWidth>sc.scrollLeft+sc.clientWidth)sc.scrollLeft=a+on.offsetWidth-sc.clientWidth}
   const pb=$("#popBtn");if(pb)pb.onclick=openPop;
   $("#legend").innerHTML=`<span>${PROJ&&PROJ.sample?"Sample sheets are the estimator's marked-up PDF. A real job shows the clean drawing.":(PROJ?PROJ.ai:"")}</span><span style="margin-left:auto" class="num hide-m">drag to pan, scroll to zoom, double-click to fit</span>`;
 }
