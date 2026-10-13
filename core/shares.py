@@ -34,7 +34,7 @@ def create(project_id, project_name, data, filename, hours=168, max_downloads=0,
     get_store().put(_bin(sid), data, "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
     now = int(time.time())
     meta = {"id": sid, "project": project_id, "name": project_name, "file": filename, "size": len(data),
-            "created": now, "expires": now + hours * 3600, "max": int(max_downloads), "count": 0, "last": None,
+            "created": now, "expires": now + hours * 3600, "max": max(0, min(int(max_downloads), 100000)), "count": 0, "last": None,
             "revoked": False, "note": note[:200], "by": user}
     _save(meta)
     return token, meta

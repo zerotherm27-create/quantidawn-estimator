@@ -7,7 +7,7 @@ import time
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from urllib.parse import parse_qs, unquote, urlparse
 
-USERS = {"anna@example.com": "correct horse battery"}
+USERS = {"anna@example.com": "correct horse battery", "unconfirmed@example.com": "correct horse battery"}
 
 
 class State:
@@ -129,7 +129,7 @@ def make_server():
             if p == "/auth/v1/token" and m == "POST":
                 d = self._json()
                 if USERS.get(d.get("email")) == d.get("password"):
-                    return self._send(200, {"access_token": "at", "refresh_token": "rt", "expires_in": 3600, "user": {"email": d["email"], "id": "u1"}})
+                    return self._send(200, {"access_token": "at", "refresh_token": "rt", "expires_in": 3600, "user": {"email": d["email"], "id": "u1", "email_confirmed_at": None if d["email"].startswith("unconfirmed") else "2026-01-01T00:00:00Z"}})
                 return self._send(400, {"error": "invalid_grant", "error_description": "Invalid login credentials"})
             if p == "/auth/v1/user" and m == "GET":     # Google sign-in tokens: gtok-<email>
                 t = (self.headers.get("Authorization") or "")[7:]

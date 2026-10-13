@@ -963,6 +963,7 @@ function paint(){
   $$("#ovl .pt").forEach(r=>{r.setAttribute("r",(5/V.k).toFixed(2));r.setAttribute("stroke-width",(2/V.k).toFixed(2))});
 }
 /* sharp detail: the base image is rendered at 2 px per point; past that, load a crop at the zoom you are viewing */
+const esc=t=>String(t==null?"":t).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const BASE_Z=2;let tileT=null,tileSeq=0;
 function removeTile(){const t=$("#tileImg");if(t)t.style.display="none";tileSeq++}
 function scheduleTile(){clearTimeout(tileT);tileT=setTimeout(loadTile,220)}
@@ -991,7 +992,7 @@ function setPage(i,keep){
   $("#pageImg").src=pg.img;$("#pageImg").style.cssText=`width:${PAGE_W}px;height:${PAGE_H}px`;
   $("#vp").style.width=PAGE_W+"px";$("#vp").style.height=PAGE_H+"px";
   const ov=$("#ovl");ov.setAttribute("viewBox",`0 0 ${PAGE_W} ${PAGE_H}`);ov.setAttribute("width",PAGE_W);ov.setAttribute("height",PAGE_H);
-  $("#pageLbl").innerHTML=`<b>${SHEETS[i].n}</b> ${SHEETS[i].t}`;$("#pageNo").textContent=`${i+1} / ${SHEETS.length}`;
+  $("#pageLbl").innerHTML=`<b>${esc(SHEETS[i].n)}</b> ${esc(SHEETS[i].t)}`;$("#pageNo").textContent=`${i+1} / ${SHEETS.length}`;
   renderTabs();CAL.on=false;CAL.pts=[];$("#plan").classList.remove("cal");renderScale();drawOverlays();if(!keep)fitView();
 }
 function drawOverlays(){
@@ -1113,6 +1114,7 @@ function renderTemplate(){
 $("#tplPick").onclick=()=>{if(!LINES.length){alert("This project has no takeoff lines yet.");return}$("#tplIn").click()};
 $("#tplIn").onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
+  if(f.size>4*1024*1024){alert("That template is over 4 MB. Remove images or unused sheets and try again.");e.target.value="";return}
   $("#tplCard").innerHTML=`<div class="hint">Reading ${f.name}...</div>`;
   const fd=new FormData();fd.append("template",f);fd.append("lines",JSON.stringify(linesForServer()));
   try{
@@ -1182,6 +1184,7 @@ function renderPricingTotals(){
   const t=priceTotals();
   $("#pTotal").innerHTML=PRICING.on?`Materials <b>${money(t.mat)}</b> &middot; Labour <b>${money(t.lab)}</b> (${fmt(t.hrs,1)} hrs) &middot; excl. GST <b>${money(t.ex)}</b> &middot; incl. GST <b>${money(t.total)}</b> &middot; ${t.priced} priced, ${t.unpriced} not${t.noLabRate?`, ${t.noLabRate} with hours but no labour rate`:""}`:"Pricing is off"}
 async function uploadPrices(file){
+  if(file.size>4*1024*1024){const e=$("#pErr");if(e)e.textContent="That price list is over 4 MB. Save it as a smaller .csv and try again.";return}
   const err=$("#pErr");if(err)err.textContent="Reading "+file.name+"...";
   const fd=new FormData();fd.append("prices",file);fd.append("lines",JSON.stringify(LINES));
   try{
@@ -1275,7 +1278,7 @@ function renderPopBar(){
   if(sel&&!sel.dataset.built){
     const seen=new Set(),opts=[];
     LINES.forEach(x=>{const key=x.el>=0?x.el:"ai"+x.id;if(seen.has(key))return;seen.add(key);opts.push(x)});
-    sel.innerHTML=opts.map(x=>`<option value="${x.id}">${x.mk} (${MT_NAME[x.mt]||"item"})</option>`).join("");
+    sel.innerHTML=opts.map(x=>`<option value="${esc(x.id)}">${esc(x.mk)} (${MT_NAME[x.mt]||"item"})</option>`).join("");
     sel.dataset.built="1";sel.onchange=()=>{st.sel=+sel.value;renderAll();scheduleSync()}}
   if(sel&&l)sel.value=String(firstOf(l).id);
   const q=$("#pbQty");if(q)q.innerHTML=l?`<b>${fmt(l.q)} ${l.u}</b> &middot; ${l.dm||""}`:"";
@@ -1327,7 +1330,7 @@ document.addEventListener("keydown",e=>{
   if(e.key==="v"&&l){l.st=l.st==="ok"?"pn":"ok";renderAll()}
   if(e.key==="f"&&l){l.st=l.st==="fl"?"pn":"fl";renderAll()}
 });
-$("#qlist").innerHTML=SKIPPED.map(s=>`<li>${s}</li>`).join("");
+$("#qlist").innerHTML=SKIPPED.map(s=>`<li>${esc(s)}</li>`).join("");
 const drop=$("#drop");["dragenter","dragover"].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add("over")}));
 ["dragleave","drop"].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove("over");if(t==="drop")uploadPdfs(e.dataTransfer.files)}));
 $("#pickPdf").onclick=()=>$("#pdfIn").click();
@@ -1372,6 +1375,7 @@ async function boot(){
       pages:[{n:"",t:"",w:842,h:595,c:0,img:"",max_z:2,scale:{ratio:null,status:"unknown",src:"",note:""}}]}}
     else{
       const r=await fetch(`/api/project/${PID}${DEMO_AI?"?demo_ai=1":""}`);
+      if(r.status===404&&QS.get("project")){location.replace("/");return}     // a project that no longer exists: open the default screen
       if(!r.ok)throw 0;
       PROJ=await r.json();
     }
@@ -1385,13 +1389,13 @@ async function boot(){
   st.sel=LINES.length?LINES[0].id:null;
   if(!DEMO_AI)applyState(PROJ.state);
   $("#ptitle").textContent=PROJ.name;$("#metaE").textContent=PROJ.engineer||"";$("#metaR").textContent=PROJ.rev?"Rev "+PROJ.rev:"";$("#metaS").textContent=PROJ.status||"";
-  $("#qlist").innerHTML=SKIPPED.map(x=>`<li>${x}</li>`).join("");
+  $("#qlist").innerHTML=SKIPPED.map(x=>`<li>${esc(x)}</li>`).join("");
   $("#queue h4 span").textContent=`Not taken off, ${SKIPPED.length} item${SKIPPED.length===1?"":"s"}`;
   $("#queue").style.display=SKIPPED.length?"":"none";$("#queue").classList.add("off");$("#qx").textContent="Show";
   $("#demoBtn").textContent=DEMO_AI?"Hide demo AI check":"Demo AI check";
   if(DEMO_AI){const el=$("#saveLbl");if(el)el.textContent="Demo AI data, not saved"}
   try{const pr=await (await fetch("/api/projects")).json();
-    $("#recent").innerHTML=pr.map(p=>`<a href="?project=${p.id}" style="${p.id===PID?"font-weight:600":""}">${p.name} <span class="num">${p.note}</span></a>`).join("")}catch(e){}
+    $("#recent").innerHTML=pr.map(p=>`<a href="?project=${encodeURIComponent(p.id)}" style="${p.id===PID?"font-weight:600":""}">${esc(p.name)} <span class="num">${esc(p.note)}</span></a>`).join("")}catch(e){}
   if(empty)go("upload");else if(!LINES.length)go("review");
   renderAll();
   if(IS_POP&&BC)BC.postMessage({type:"hello",from:ME});

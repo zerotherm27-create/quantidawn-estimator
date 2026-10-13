@@ -3,6 +3,7 @@
     ./.venv/bin/python server.py        then open http://127.0.0.1:5050
 """
 import hmac
+import math
 import html
 import io
 import json
@@ -45,6 +46,25 @@ WEB = ROOT / "web"
 _su = urlparse(os.environ.get("SUPABASE_URL", ""))
 STORAGE_ORIGIN = f" {_su.scheme}://{_su.netloc}" if _su.netloc and os.environ.get("SUPABASE_SERVICE_KEY") else ""   # signed image and upload links
 ID_RE = re.compile(r"^[a-z0-9-]{3,40}$")
+
+
+def login_token_ok(sent):
+    """Constant-time check of the sign-in form token. An empty or missing session token never matches (a default value
+    would let a request with no cookie send the same default)."""
+    want = session.get("lcsrf") or ""
+    return bool(want) and hmac.compare_digest(str(sent or ""), want)
+
+
+def clean_label(name, limit=80):
+    """File names become project names and sheet labels shown in the UI: drop markup and control characters."""
+    return re.sub(r"[<>&\"'`\x00-\x1f]", "", str(name or "")).strip()[:limit] or "plan"
+
+
+def parse_lines(rows):
+    try:
+        return [from_json(r) for r in rows]
+    except (KeyError, TypeError, ValueError, AttributeError):
+        abort(400, description="Those takeoff lines are not in the expected format.")
 
 
 def check_id(pid):
@@ -145,13 +165,20 @@ def tile(pid, n):
         x, y, w, h, z = (float(request.args[k]) for k in ("x", "y", "w", "h", "z"))
     except (KeyError, ValueError):
         abort(400)
+    if not all(math.isfinite(v) for v in (x, y, w, h, z)) or w <= 0 or h <= 0 or z <= 0 or max(w, h) > 20000 or abs(x) > 1e6 or abs(y) > 1e6 or z > 100:
+        abort(400)
     key = f"{n}_{round(x)}_{round(y)}_{round(w)}_{round(h)}_{round(z * 2) / 2}"
     skey, st = f"tiles/{pid}/{key}.png", get_store()
     if not st.exists(skey):
         try:
             png, _, _ = render_crop(pdf, idx, x, y, w, h, z)
-        except (ValueError, IndexError):
+        except (ValueError, IndexError, RuntimeError, OverflowError):
             abort(400)
+        if st.kind == "supabase" and len(png) < 3_500_000:
+            # small tiles go straight back (the browser caches them) so zooming around does not fill the storage quota
+            resp = Response(png, mimetype="image/png")
+            resp.headers["Cache-Control"] = "private, max-age=86400"
+            return resp
         st.put(skey, png, "image/png")
     return blob_response(skey, 86400)
 
@@ -180,11 +207,11 @@ def build_project(pid, entries):
         for i, page in enumerate(doc):
             w, h = page.rect.width, page.rect.height
             idx = len(pages) + 1
-            pages.append({"n": Path(orig).stem[:18], "t": f"page {i + 1}", "w": w, "h": h, "paper": paper_of(w, h),
+            pages.append({"n": clean_label(Path(orig).stem, 18), "t": f"page {i + 1}", "w": w, "h": h, "paper": paper_of(w, h),
                           "img": f"/pages/{pid}/p{idx}.png", "scale": _scale_json("", w, h), "c": 0,
                           "max_z": native_z(page), "src": {"pdf": stored, "page": i}})
         doc.close()
-    proj = {"id": pid, "name": Path(entries[0][0]).stem, "engineer": "", "rev": "", "status": "Uploaded",
+    proj = {"id": pid, "name": clean_label(Path(entries[0][0]).stem), "engineer": "", "rev": "", "status": "Uploaded",
             "sample": False, "profile": "westgarth", "groups": [], "pages": pages, "lines": [],
             "skipped": [], "ai": "not run",
             "message": "Pages are ready. Takeoff lines need AI measuring, which is not connected yet."}
@@ -193,14 +220,15 @@ def build_project(pid, entries):
 
 
 def stored_name(fi, name):
-    return f"{fi}-{secure_filename(name) or f'plan{fi}.pdf'}"
+    base = (secure_filename(name) or f"plan{fi}.pdf")[-80:]
+    return f"{fi}-{base}"
 
 
 @app.post("/api/uploads/init")
 def upload_init():
     """Hosted mode: hand the browser one-time links so big PDFs go straight to storage (the server never carries them)."""
     names = (request.get_json(force=True, silent=True) or {}).get("names")
-    if not isinstance(names, list) or not 1 <= len(names) <= 20 or not all(isinstance(n, str) and n.lower().endswith(".pdf") for n in names):
+    if not isinstance(names, list) or not 1 <= len(names) <= 20 or not all(isinstance(n, str) and n.lower().endswith(".pdf") and len(n) <= 200 for n in names):
         return jsonify(error="Choose at least one PDF file."), 400
     pid = "p-" + uuid.uuid4().hex[:10]
     st, files = get_store(), []
@@ -217,7 +245,7 @@ def upload_finalize():
     body = request.get_json(force=True, silent=True) or {}
     pid, names = str(body.get("id", "")), body.get("names")
     check_id(pid)
-    if not isinstance(names, list) or not names or not all(isinstance(n, str) for n in names):
+    if not isinstance(names, list) or not 1 <= len(names) <= 20 or not all(isinstance(n, str) and n.lower().endswith(".pdf") and len(n) <= 200 for n in names):
         abort(400)
     st = get_store()
     if st.doc_get("project", pid) is not None:
@@ -236,7 +264,7 @@ def upload_finalize():
 @app.post("/api/projects")
 def upload_project():
     """Local mode: PDFs arrive with the request."""
-    files = [f for f in request.files.getlist("files") if f.filename.lower().endswith(".pdf")]
+    files = [f for f in request.files.getlist("files") if f.filename.lower().endswith(".pdf") and len(f.filename) <= 200][:20]
     if not files:
         return jsonify(error="Choose at least one PDF file."), 400
     pid, st, entries = "p-" + uuid.uuid4().hex[:10], get_store(), []
@@ -265,6 +293,8 @@ def project(pid):
 def put_state(pid):
     check_id(pid)
     load_project(pid)
+    if request.content_length and request.content_length > 2_000_000:
+        return jsonify(error="That much saved work is too large to store."), 413
     data = request.get_json(force=True, silent=True)
     if not isinstance(data, dict):
         return jsonify(error="bad state"), 400
@@ -286,7 +316,7 @@ def lines_from_request():
     rows = body.get("lines")
     if not isinstance(rows, list):
         abort(400)
-    return [from_json(r) for r in rows]
+    return parse_lines(rows)
 
 
 XLSX = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
@@ -338,7 +368,7 @@ def upload_prices(pid):
         rows = json.loads(request.form.get("lines", "[]"))
     except ValueError:
         rows = []
-    res = price_lines([from_json(r) for r in rows], entries)
+    res = price_lines(parse_lines(rows), entries)
     return jsonify(name=f.filename, entries=len(entries),
                    matches=[{"id": r["id"], "status": m.status, "rate": m.rate, "entry": m.entry,
                              "score": m.score, "note": m.note, "lhpu": m.labour_hours, "lrate": m.labour_rate}
@@ -374,7 +404,7 @@ def upload_template(pid):
         rows = json.loads(request.form.get("lines", "[]"))
     except ValueError:
         rows = []
-    lines = [from_json(r) for r in rows]
+    lines = parse_lines(rows)
     items = [i for i in tpl.line_items() if i.input_cells]
     matches, un_lines, un_items = match_lines(items, lines)
     return jsonify(
@@ -423,11 +453,32 @@ def gate():
         if request.path.startswith(("/api/", "/tile/", "/pages/", "/pricing/")):
             return jsonify(error="Sign in required"), 401
         return redirect("/login?next=" + safe_next(request.full_path.rstrip("?")))
+    if auth.supabase_auth() and time.time() - session.get("chk", 0) > 600:        # still on the team? (removed people lose access within minutes)
+        if not auth.still_member(session["user"], session.get("uid", "")):
+            session.clear()
+            return jsonify(error="Sign in required"), 401
+        session["chk"] = time.time()
     if request.method in ("POST", "PUT", "DELETE", "PATCH"):
         sent = request.headers.get("X-CSRF-Token", "")
         if not sent or not hmac.compare_digest(sent, session.get("csrf", "")):
             return jsonify(error="Your session check failed. Reload the page and try again."), 403
     return None
+
+
+@app.errorhandler(Exception)
+def api_error(exc):
+    """The browser app expects JSON from /api/: never hand it an HTML error page or a stack trace."""
+    from werkzeug.exceptions import HTTPException
+    if isinstance(exc, HTTPException):
+        code, msg = exc.code or 500, exc.description
+        if code == 413:
+            msg = "That file is too large to upload here (the limit is about 4 MB for this kind of file)."
+    else:
+        app.logger.exception("unhandled error")
+        code, msg = 500, "Something went wrong on the server. Try again."
+    if request.path.startswith(("/api/", "/tile/", "/pages/")):
+        return jsonify(error=msg), code
+    return (exc, code) if isinstance(exc, HTTPException) else (Response("Something went wrong.", mimetype="text/plain"), 500)
 
 
 @app.after_request
@@ -441,7 +492,7 @@ def security_headers(resp):
         "object-src 'none'; frame-ancestors 'none'; base-uri 'self'")
     if SECURE:
         resp.headers.setdefault("Strict-Transport-Security", "max-age=31536000")
-    if request.path.startswith(("/api/", "/d/", "/login")):
+    if request.path.startswith(("/api/", "/d/", "/login", "/forgot", "/reset", "/auth/")):
         resp.headers["Cache-Control"] = "no-store"
     return resp
 
@@ -486,19 +537,19 @@ def auth_callback():
 
 @app.post("/auth/session")
 def auth_session():
-    if not auth.supabase_auth() or not hmac.compare_digest(request.headers.get("X-Login-Token", ""), session.get("lcsrf", "x")):
+    if not auth.supabase_auth() or not login_token_ok(request.headers.get("X-Login-Token")):
         return jsonify(error="Sign-in check failed. Start again from the sign-in page."), 403
     key = f"{request.remote_addr}|google"
     if THROTTLE.locked_for(key):
         return jsonify(error="Too many attempts. Try again later."), 429
-    email = auth.verify_access_token((request.get_json(force=True, silent=True) or {}).get("access_token"))
-    if not email:
+    who = auth.verify_access_token((request.get_json(force=True, silent=True) or {}).get("access_token"))
+    if not who:
         THROTTLE.fail(key)
         return jsonify(error="That Google account is not on the estimator team. Ask an administrator."), 403
     THROTTLE.ok(key)
     session.clear()
     session.permanent = True
-    session["user"], session["csrf"] = email, secrets.token_hex(16)
+    session["user"], session["csrf"], session["uid"], session["chk"] = who[0], secrets.token_hex(16), who[1], time.time()
     return jsonify(ok=True)
 
 
@@ -511,7 +562,7 @@ def forgot_page():
 @app.post("/forgot")
 def forgot_submit():
     session.setdefault("lcsrf", secrets.token_hex(16))
-    if not hmac.compare_digest(request.form.get("csrf", ""), session["lcsrf"]):
+    if not login_token_ok(request.form.get("csrf")):
         return redirect("/forgot")
     if not auth.supabase_auth():
         return page("forgot.html", CSRF=session["lcsrf"], MSG="", ERROR="Passwords here are managed by an administrator. Ask them to reset yours.")
@@ -534,7 +585,7 @@ def reset_page():
 
 @app.post("/reset/submit")
 def reset_submit():
-    if not auth.supabase_auth() or not hmac.compare_digest(request.headers.get("X-Login-Token", ""), session.get("lcsrf", "x")):
+    if not auth.supabase_auth() or not login_token_ok(request.headers.get("X-Login-Token")):
         return jsonify(error="The check failed. Open the link from your email again."), 403
     key = f"{request.remote_addr}|reset"
     if THROTTLE.locked_for(key):
@@ -561,16 +612,18 @@ def login_submit():
     name = (request.form.get("username") or "").strip().lower()
     key = f"{request.remote_addr}|{name}"
     nxt = safe_next(request.form.get("next", "/"))
-    if not hmac.compare_digest(request.form.get("csrf", ""), session.get("lcsrf", "x")):
+    if not login_token_ok(request.form.get("csrf")):
         return redirect("/login")
     wait = THROTTLE.locked_for(key)
     if wait:
         return page("login.html", NEXT=nxt, CSRF=session["lcsrf"], ERROR=f"Too many attempts. Try again in {wait // 60 + 1} minutes."), 429
-    if auth.verify(name, request.form.get("password", "")):
+    uid = auth.verify(name, request.form.get("password", ""))
+    if uid:
         THROTTLE.ok(key)
         session.clear()
         session.permanent = True
         session["user"], session["csrf"] = name, secrets.token_hex(16)
+        session["uid"], session["chk"] = (uid if isinstance(uid, str) else ""), time.time()
         return redirect(nxt)
     THROTTLE.fail(key)
     return page("login.html", NEXT=nxt, CSRF=session["lcsrf"], ERROR="That user name or password is not right."), 401
@@ -653,7 +706,7 @@ def create_share(pid):
             return jsonify(error="There are no takeoff lines to share yet."), 400
         data, filename = export_bytes(p, lines, body.get("pricing")), f"{safe}-takeoff.xlsx"
     try:
-        hours, limit = int(body.get("hours", 168)), int(body.get("max_downloads", 0))
+        hours, limit = int(body.get("hours", 168)), max(0, int(body.get("max_downloads", 0)))
     except (TypeError, ValueError):
         return jsonify(error="Check the expiry and download limit."), 400
     token, meta = shares.create(pid, p["name"], data, filename, hours, limit, str(body.get("note", "")), g.user or "")
@@ -700,6 +753,8 @@ def share_file(token):
     if not shares.record_download(meta):
         return share_gone({**meta, "count": meta["max"]})
     data = shares.file_bytes(meta)
+    if data is None:
+        return share_gone(None)
     resp = send_file(io.BytesIO(data), as_attachment=True, download_name=meta["file"], mimetype=XLSX)
     resp.headers["X-Robots-Tag"] = "noindex, nofollow"
     return resp

@@ -7,6 +7,7 @@ Two backends with the same behaviour:
 The backend is chosen by environment: SUPABASE_URL and SUPABASE_SERVICE_KEY select Supabase.
 The service key is a server-side secret: it must never be sent to the browser.
 """
+import calendar
 import json
 import os
 import re
@@ -216,7 +217,7 @@ class SupabaseStore:
             q += f"&data->>{k}=eq.{v}"
         out = []
         for row in self._r("GET", q).json():
-            ts = time.mktime(time.strptime(row["updated_at"][:19], "%Y-%m-%dT%H:%M:%S"))
+            ts = calendar.timegm(time.strptime(row["updated_at"][:19], "%Y-%m-%dT%H:%M:%S"))
             out.append((row["id"], row["data"], ts))
         return out
 

@@ -65,6 +65,17 @@ check(sub("gtok-stranger@gmail.com", "a-long-new-password").status_code == 400, 
 check(sub("gtok-boss@example.com", "a-long-new-password", "wrong").status_code == 403, "reset without the page token refused")
 check(sub("gtok-boss@example.com", "a-long-new-password").status_code == 200 and stub.passwords["boss@example.com"] == "a-long-new-password", "member sets a new password")
 
+# --- audit regressions
+auth.team_add("unconfirmed@example.com")
+_c6 = server.app.test_client(); _t6 = re.search(r'name="csrf" value="([^"]+)"', _c6.get("/login").get_data(as_text=True)).group(1)
+_r = _c6.post("/login", data={"username": "unconfirmed@example.com", "password": "correct horse battery", "csrf": _t6, "next": "/"})
+check(_r.status_code == 401, "unconfirmed Supabase account cannot claim a team member's email")
+c5 = server.app.test_client()                        # no cookie at all: a made-up form token must not pass
+check(c5.post("/login", data={"username": "anna@example.com", "password": "correct horse battery", "csrf": "x"}).status_code == 302 and c5.get("/api/projects").status_code == 401, "login form token 'x' without a session does not pass")
+check(c5.post("/reset/submit", json={"access_token": "gtok-boss@example.com", "password": "a-long-new-password"}, headers={"X-Login-Token": "x"}).status_code == 403, "reset with a made-up page token refused")
+check(c5.post("/auth/session", json={"access_token": "gtok-boss@example.com"}, headers={"X-Login-Token": "x"}).status_code == 403, "google sign-in with a made-up page token refused")
+check(c.get(f"/tile/p-nonexist1/1?x=nan&y=0&w=1&h=1&z=2").status_code in (400, 404), "tile with NaN is a clean 4xx")
+
 # direct upload: init -> PUT to the signed link -> finalize
 doc = fitz.open(); doc.new_page(width=842, height=595).insert_text((50, 50), "SCALE 1:100 @A3"); doc.new_page(); pdf = doc.tobytes()
 init = c.post("/api/uploads/init", json={"names": ["Plans One.pdf"]}, headers=H).json
@@ -85,9 +96,20 @@ check(r.status_code == 302 and r.headers["Location"].startswith(url) and get_sto
 img = requests.get(r.headers["Location"]).content
 check(img[:4] == b"\x89PNG", "the signed link returns the PNG")
 r = c.get(f"/tile/{pid}/1?x=0&y=0&w=200&h=150&z=3")
-check(r.status_code == 302 and any(k[1].startswith(f"tiles/{pid}/") for k in stub.blobs), "tile rendered once, stored, then redirected")
+check(r.status_code == 200 and r.mimetype == "image/png" and "max-age" in r.headers["Cache-Control"] and not any(k[1].startswith(f"tiles/{pid}/") for k in stub.blobs), "small tiles come straight back, browser-cached, and are not stored")
 
 # state, templates and shares live in the store
+for q in ("x=nan&y=0&w=100&h=100&z=2", "x=0&y=0&w=inf&h=100&z=2", "x=0&y=0&w=1e308&h=1e308&z=1e-300", "x=0&y=0&w=100&h=100&z=1e308"):
+    check(c.get(f"/tile/{pid}/1?{q}").status_code == 400, f"tile {q} refused with 400")
+check(c.post(f"/api/project/{pid}/export", json={"lines": [{}]}, headers=H).status_code == 400, "malformed lines give 400, not 500")
+check(c.put(f"/api/project/{pid}/state", data="{" + '"a":"' + "x" * 2_100_000 + '"}', content_type="application/json", headers=H).status_code == 413, "oversized saved state refused")
+r = c.post("/api/uploads/init", json={"names": ["<img src=x onerror=alert(1)>.pdf"]}, headers=H).json
+requests.put(r["files"][0]["url"], data=pdf, headers={"Content-Type": "application/pdf"})
+c.post("/api/uploads/finalize", json={"id": r["id"], "names": ["<img src=x onerror=alert(1)>.pdf"]}, headers=H)
+pj = c.get(f"/api/project/{r['id']}").json
+check("<" not in pj["name"] and "<" not in pj["pages"][0]["n"] and ">" not in pj["name"], "markup in a file name is stripped from project and sheet names")
+check(c.post("/api/uploads/init", json={"names": ["a" * 300 + ".pdf"]}, headers=H).status_code == 400, "over-long file name refused")
+check(c.post("/api/project/%s/share" % pid, json={"lines": [], "max_downloads": -5}, headers=H).status_code == 400, "share with no lines refused")
 check(c.put(f"/api/project/{pid}/state", json={"v": 1}, headers=H).status_code == 200 and c.get(f"/api/project/{pid}").json["state"]["v"] == 1, "saved state round-trips")
 from core import shares
 tk, meta = shares.create(pid, "Plans One", b"xlsx-bytes", "t.xlsx", 24, 1, "", "anna")

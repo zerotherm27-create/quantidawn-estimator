@@ -113,12 +113,14 @@ def _verify_supabase(email, password):
     if r is None or r.status_code != 200:
         return False
     user = r.json().get("user") or {}
-    return _is_member(user.get("id"), email)
+    if not user.get("email_confirmed_at"):          # an unconfirmed sign-up could claim a team member's address
+        return False
+    return (user.get("id") or "") if _is_member(user.get("id"), email) else False
 
 
 def verify_access_token(token):
     """Google sign-in: the browser hands over the Supabase access token it received; ask Supabase who it belongs to.
-    Returns the email if that person is a member, else None."""
+    Returns (email, user id) if that person is a member, else None."""
     if not token or len(token) > 4000:
         return None
     r = _auth_call("GET", "/auth/v1/user", headers={"apikey": os.environ["SUPABASE_ANON_KEY"], "Authorization": f"Bearer {token}"})
@@ -128,7 +130,7 @@ def verify_access_token(token):
     email = (u.get("email") or "").strip().lower()
     if not email or not u.get("email_confirmed_at"):
         return None
-    return email if _is_member(u.get("id"), email) else None
+    return (email, u.get("id") or "") if _is_member(u.get("id"), email) else None
 
 
 def _is_member_email(email):
@@ -143,6 +145,11 @@ def _is_member_email(email):
         except Exception:
             return False
     return False
+
+
+def still_member(email, uid):
+    """Re-checked periodically so removing someone from the team ends their session within minutes, not hours."""
+    return _is_member(uid, email)
 
 
 def request_reset(email, redirect_to):
