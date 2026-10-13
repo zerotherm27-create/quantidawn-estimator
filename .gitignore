@@ -1,0 +1,21 @@
+.env
+.venv/
+__pycache__/
+.vercel
+.DS_Store
+.claude-flow/
+.claude/
+# client plans, saved data and scratch
+samples/
+data/
+temp/
+_mvp_extract/
+# business documents and large binaries stay out of the code repo
+*.zip
+*.docx
+*.pdf
+AI_ESTIMATOR_BUILD_PLAN.md
+bidbridge_website_build_brief.md
+quantidawn_*.md
+quantidawn_logo_concepts.html
+estimator_preview.html

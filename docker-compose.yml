@@ -1,0 +1,26 @@
+services:
+  app:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment:
+      QD_BASE_URL: https://${DOMAIN}
+    volumes:
+      - ./data:/app/data          # uploads, saved work, users and client links: back this folder up
+    expose:
+      - "8000"
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      DOMAIN: ${DOMAIN}
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data           # keeps the HTTPS certificate
+    depends_on:
+      - app
+volumes:
+  caddy_data:

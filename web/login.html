@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="robots" content="noindex"><title>Sign in</title>
+<link rel="stylesheet" href="/fonts/fonts.css">
+<meta name="description" content="Upload construction plans, check the measured takeoff, and export a quantities workbook. Rules measure, AI cross-checks, a person verifies.">
+<meta property="og:type" content="website"><meta property="og:site_name" content="QuantiDawn">
+<meta property="og:title" content="QuantiDawn Estimator | Sign in"><meta property="og:description" content="Upload construction plans, check the measured takeoff, and export a quantities workbook. Rules measure, AI cross-checks, a person verifies.">
+<meta property="og:url" content="https://estimate.quantidawn.com/"><meta property="og:image" content="https://estimate.quantidawn.com/brand/og-image.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="QuantiDawn - construction estimating">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="QuantiDawn Estimator | Sign in"><meta name="twitter:description" content="Upload construction plans, check the measured takeoff, and export a quantities workbook. Rules measure, AI cross-checks, a person verifies."><meta name="twitter:image" content="https://estimate.quantidawn.com/brand/og-image.png">
+<meta name="theme-color" content="#c2410c"><link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="512x512" href="/brand/favicon-512.png">
+<link rel="icon" href="/brand/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/brand/favicon-192.png">
+<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+<style>:root{color-scheme:light;--bg:#f6f6f7;--surface:#fff;--ink:#18181b;--ink-2:#52525b;--ink-3:#6b6b74;--line:#e4e4e7;--accent:#c2410c;--accent-soft:#fbece5;--on-accent:#fff;--font:'Geist',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;--mono:'Geist Mono',ui-monospace,Menlo,monospace}
+@media (prefers-color-scheme:dark){:root{color-scheme:dark;--bg:#0f0f11;--surface:#16161a;--ink:#f4f4f5;--ink-2:#a1a1aa;--ink-3:#8d8d96;--line:#2a2a30;--accent:#ef6a35;--accent-soft:#2a1710;--on-accent:#1a0f0a}}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--ink);font:14px/1.5 var(--font);-webkit-font-smoothing:antialiased;min-height:100dvh}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:10px 16px;border-radius:9px;font:500 14px var(--font);border:1px solid var(--accent);background:var(--accent);color:var(--on-accent);cursor:pointer;text-decoration:none;transition:transform .15s,filter .2s}
+.btn:hover{filter:brightness(1.06)}.btn:active{transform:translateY(1px) scale(.98)}
+
+.wrap{display:grid;grid-template-columns:1.1fr 1fr;min-height:100dvh}
+.brand{padding:48px 56px;display:flex;flex-direction:column;justify-content:space-between;border-right:1px solid var(--line);
+  background:linear-gradient(var(--line) 1px,transparent 1px) 0 0/32px 32px,linear-gradient(90deg,var(--line) 1px,transparent 1px) 0 0/32px 32px}
+.logo{display:block;background:var(--bg);padding:6px 10px 6px 0;width:max-content;max-width:100%}
+.logo img{display:block;width:min(280px,70vw);height:auto}
+.brand h1{font-size:30px;line-height:1.1;letter-spacing:-.03em;font-weight:600;max-width:14ch;background:var(--bg);padding:6px 0}
+.brand p{color:var(--ink-2);max-width:40ch;margin-top:12px;background:var(--bg)}
+form{align-self:center;justify-self:center;width:min(360px,calc(100% - 48px));display:grid;gap:16px;padding:32px 0}
+h2{font-size:20px;letter-spacing:-.02em}
+label{display:grid;gap:6px;font-size:12.5px;color:var(--ink-2)}
+input[type=text],input[type=password]{font:15px var(--font);padding:10px 12px;border:1px solid var(--line);border-radius:9px;background:var(--surface);color:var(--ink);outline:0}
+input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.btn.ghost{display:block;text-align:center;text-decoration:none;background:transparent;color:var(--ink);border:1px solid var(--line)}
+.err{color:var(--accent);font-size:13px;min-height:20px}
+.note{color:var(--ink-3);font-size:12.5px}
+@media (max-width:760px){.wrap{grid-template-columns:1fr}.brand{padding:28px 24px;border-right:0;border-bottom:1px solid var(--line);gap:24px}.brand h1{font-size:24px}}
+</style></head><body>
+<div class="wrap">
+  <div class="brand"><picture class="logo"><source media="(prefers-color-scheme: dark)" srcset="/brand/logo-white.png"><img src="/brand/logo-full.png" alt="QuantiDawn - construction estimating" width="280" height="62"></picture><div><h1>Takeoffs your team can check.</h1><p>Sign in to the QuantiDawn estimator workspace.</p></div><span class="note">Authorised team members only.</span></div>
+  <form method="post" action="/login" autocomplete="on">
+    <h2>Sign in</h2>
+    <input type="hidden" name="csrf" value="{{CSRF}}"><input type="hidden" name="next" value="{{NEXT}}">
+    <label>User name or email<input type="text" name="username" autocomplete="username" autocapitalize="none" spellcheck="false" required autofocus></label>
+    <label>Password<input type="password" name="password" autocomplete="current-password" required></label>
+    <div class="err" role="alert">{{ERROR}}</div>
+    <button class="btn" type="submit">Sign in</button>
+    <!--GOOGLE-->
+    <span class="note">Forgotten your password? Ask an administrator to reset it.</span>
+  </form>
+</div></body></html>

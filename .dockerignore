@@ -1,0 +1,12 @@
+.venv
+data
+samples
+design
+docs
+tests
+_mvp_extract
+*.zip
+*.docx
+*.pdf
+.env
+__pycache__

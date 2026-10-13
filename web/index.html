@@ -1,0 +1,1453 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>QuantiDawn Takeoff Workspace</title>
+<!--SESSION-->
+<link rel="stylesheet" href="/fonts/fonts.css">
+<meta name="description" content="Upload construction plans, check the measured takeoff, and export a quantities workbook. Rules measure, AI cross-checks, a person verifies.">
+<meta property="og:type" content="website"><meta property="og:site_name" content="QuantiDawn">
+<meta property="og:title" content="QuantiDawn Estimator | Takeoffs your team can check"><meta property="og:description" content="Upload construction plans, check the measured takeoff, and export a quantities workbook. Rules measure, AI cross-checks, a person verifies.">
+<meta property="og:url" content="https://estimate.quantidawn.com/"><meta property="og:image" content="https://estimate.quantidawn.com/brand/og-image.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630"><meta property="og:image:alt" content="QuantiDawn - construction estimating">
+<meta name="twitter:card" content="summary_large_image"><meta name="twitter:title" content="QuantiDawn Estimator | Takeoffs your team can check"><meta name="twitter:description" content="Upload construction plans, check the measured takeoff, and export a quantities workbook. Rules measure, AI cross-checks, a person verifies."><meta name="twitter:image" content="https://estimate.quantidawn.com/brand/og-image.png">
+<meta name="theme-color" content="#c2410c"><link rel="manifest" href="/manifest.webmanifest">
+<link rel="icon" type="image/png" sizes="512x512" href="/brand/favicon-512.png">
+<link rel="icon" href="/brand/favicon.ico" sizes="48x48">
+<link rel="icon" type="image/png" sizes="32x32" href="/brand/favicon-32.png">
+<link rel="icon" type="image/png" sizes="192x192" href="/brand/favicon-192.png">
+<link rel="apple-touch-icon" href="/brand/apple-touch-icon.png">
+<style>
+:root{
+  color-scheme:light;
+  
+  --bg:#f6f6f7; --surface:#ffffff; --ink:#18181b; --ink-2:#52525b; --ink-3:#6b6b74;
+  --line:#e4e4e7; --line-2:#efeff1; --accent:#c2410c; --accent-soft:#fbece5; --on-accent:#ffffff;
+  --paper:#fbfbfa; --plan-line:#c9c9ce; --shimmer:rgba(255,255,255,.55); --plan-dim:1;
+  --font:'Geist',ui-sans-serif,system-ui,-apple-system,'Segoe UI',sans-serif;
+  --mono:'Geist Mono',ui-monospace,'SF Mono',Menlo,monospace;
+  --ease:cubic-bezier(.16,1,.3,1);
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  
+  --bg:#0f0f11; --surface:#16161a; --ink:#f4f4f5; --ink-2:#a1a1aa; --ink-3:#8d8d96;
+  --line:#2a2a30; --line-2:#202025; --accent:#ef6a35; --accent-soft:#2a1710; --on-accent:#1a0f0a;
+  --paper:#1a1a1e; --plan-line:#3a3a41; --shimmer:rgba(255,255,255,.07); --plan-dim:.9;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    
+    --bg:#0f0f11; --surface:#16161a; --ink:#f4f4f5; --ink-2:#a1a1aa; --ink-3:#8d8d96;
+    --line:#2a2a30; --line-2:#202025; --accent:#ef6a35; --accent-soft:#2a1710; --on-accent:#1a0f0a;
+    --paper:#1a1a1e; --plan-line:#3a3a41; --shimmer:rgba(255,255,255,.07); --plan-dim:.9;
+  }
+}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px;border-radius:6px}
+input:focus-visible{outline:none}
+.vp img{filter:brightness(var(--plan-dim))}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{background:var(--bg);color:var(--ink);font:14px/1.45 var(--font);-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+.num{font-family:var(--mono);font-variant-numeric:tabular-nums;letter-spacing:-.01em}
+svg.i{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;flex:none}
+
+/* shell */
+.app{display:grid;grid-template-columns:56px 1fr;min-height:100dvh}
+.rail{border-right:1px solid var(--line);background:var(--surface);display:flex;flex-direction:column;align-items:center;padding:14px 0;gap:6px;position:sticky;top:0;height:100dvh}
+.brandmark{display:block;width:38px;height:38px;margin:2px 0 14px;border-radius:9px;background:#fff;box-shadow:0 0 0 1px var(--line);overflow:hidden}
+.brandmark img{display:block;width:100%;height:100%;object-fit:contain}
+.rail button{width:36px;height:36px;border-radius:9px;display:grid;place-items:center;color:var(--ink-3);transition:background .2s,color .2s}
+.rail button:hover{background:var(--line-2);color:var(--ink)}
+.rail button.on{background:var(--accent-soft);color:var(--accent)}
+.rail .sp{flex:1}
+main{min-width:0;display:flex;flex-direction:column}
+.top{display:flex;align-items:center;gap:16px;padding:12px 24px;border-bottom:1px solid var(--line);background:var(--surface);position:sticky;top:0;z-index:5}
+.crumb{color:var(--ink-3);font-size:12.5px}
+.title{font-weight:600;letter-spacing:-.01em}
+.meta{display:flex;gap:6px;align-items:center;color:var(--ink-2);font-size:12.5px}
+.sep{width:1px;height:16px;background:var(--line)}
+.grow{flex:1}
+.seg{display:flex;background:var(--line-2);border-radius:8px;padding:2px}
+.seg button{padding:4px 10px;border-radius:6px;font-size:12.5px;color:var(--ink-2);transition:.2s}
+.seg button.on{background:var(--surface);color:var(--ink);box-shadow:0 1px 2px rgba(24,24,27,.08)}
+.btn{display:inline-flex;align-items:center;gap:8px;padding:7px 12px;border-radius:8px;font-weight:500;font-size:13px;border:1px solid var(--line);background:var(--surface);transition:transform .15s var(--ease),background .2s,border-color .2s}
+.btn:hover{background:var(--line-2)}
+.btn:active{transform:translateY(1px) scale(.98)}
+.btn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.btn.primary:hover{background:var(--ink-2)}
+.btn.accent{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.kbd{font:500 11px var(--mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:4px;padding:0 5px;color:var(--ink-2)}
+
+.view{display:none;flex:1;min-height:0}
+.view.on{display:block}
+
+/* ---------- upload ---------- */
+.upload{display:grid;grid-template-columns:1.25fr 1fr;min-height:calc(100dvh - 58px)}
+.drop{margin:32px;border:1.5px dashed var(--plan-line);border-radius:20px;display:flex;flex-direction:column;justify-content:flex-end;padding:40px;position:relative;overflow:hidden;
+  background:
+   linear-gradient(var(--line-2) 1px,transparent 1px) 0 0/32px 32px,
+   linear-gradient(90deg,var(--line-2) 1px,transparent 1px) 0 0/32px 32px;transition:border-color .25s,background-color .25s}
+.drop:hover,.drop.over{border-color:var(--accent)}
+.drop h1{font-size:34px;line-height:1.05;letter-spacing:-.03em;font-weight:600;max-width:12ch}
+.drop p{color:var(--ink-2);margin:12px 0 24px;max-width:46ch}
+.drop .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.drop .ghost{position:absolute;top:40px;right:40px;width:200px;height:140px;border:1px solid var(--plan-line);border-radius:6px;background:var(--paper);transform:rotate(3deg);box-shadow:0 20px 40px -24px rgba(24,24,27,.25)}
+.drop .ghost.b{transform:rotate(-4deg) translate(-48px,22px);opacity:.7}
+.drop .ghost::after{content:"";position:absolute;inset:14px;background:
+  repeating-linear-gradient(0deg,var(--plan-line) 0 1px,transparent 1px 14px),
+  repeating-linear-gradient(90deg,var(--plan-line) 0 1px,transparent 1px 14px);opacity:.6}
+.how{padding:56px 40px 40px 8px;display:flex;flex-direction:column;gap:28px;justify-content:center}
+.how h2{font-size:12px;text-transform:uppercase;letter-spacing:.08em;color:var(--ink-3);font-weight:500}
+.step{display:grid;grid-template-columns:32px 1fr;gap:12px;padding-bottom:22px;border-bottom:1px solid var(--line)}
+.step:last-child{border-bottom:0}
+.step b{font-weight:500;display:block;margin-bottom:2px}
+.step span{color:var(--ink-2);font-size:13px}
+.step i{font:500 12px var(--mono);color:var(--accent);padding-top:2px}
+.recent{margin-top:4px}
+.recent a{display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:13px;cursor:pointer;transition:padding .25s var(--ease)}
+.recent a:hover{padding-left:6px}
+.recent a span{color:var(--ink-3)}
+
+/* ---------- processing ---------- */
+.proc{max-width:760px;padding:64px 40px;margin:0 auto}
+.proc h1{font-size:26px;letter-spacing:-.025em;font-weight:600}
+.proc .sub{color:var(--ink-2);margin:6px 0 32px}
+.pg{display:grid;grid-template-columns:44px 1fr 120px 70px;gap:16px;align-items:center;padding:14px 0;border-top:1px solid var(--line)}
+.pg .th{width:44px;height:32px;border-radius:4px;border:1px solid var(--line);background:var(--paper)}
+.pg .nm{font-weight:500}.pg .nm small{display:block;color:var(--ink-3);font-weight:400;font-size:12.5px}
+.bar{height:4px;border-radius:2px;background:var(--line-2);overflow:hidden}
+.bar i{display:block;height:100%;width:0;background:var(--accent);transition:width .6s var(--ease)}
+.pg .st{font:500 12px var(--mono);color:var(--ink-3);text-align:right}
+.pg.done .st{color:var(--ink)}
+.pg.work .th{position:relative;overflow:hidden}
+.pg.work .th::after,.sk::after{content:"";position:absolute;inset:0;background:linear-gradient(100deg,transparent 30%,var(--shimmer) 50%,transparent 70%);transform:translateX(-100%);animation:shim 1.3s infinite}
+@keyframes shim{to{transform:translateX(100%)}}
+.live{display:inline-block;width:7px;height:7px;border-radius:50%;background:var(--accent);animation:pulse 1.4s ease-in-out infinite;margin-right:8px}
+@keyframes pulse{50%{opacity:.25;transform:scale(.7)}}
+
+/* ---------- review ---------- */
+.review{display:grid;grid-template-columns:minmax(380px,.74fr) minmax(0,1.26fr);height:calc(100dvh - 58px)}
+.left{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--paper)}
+.tabs{display:flex;gap:2px;padding:10px 14px 0;border-bottom:1px solid var(--line);background:var(--surface);overflow-x:auto}
+.tabs button{padding:8px 11px;font-size:12.5px;color:var(--ink-3);border-bottom:2px solid transparent;white-space:nowrap;transition:color .2s}
+.tabs button:hover{color:var(--ink)}
+.tabs button.on{color:var(--ink);border-color:var(--accent)}
+.tabs button small{font:500 11px var(--mono);margin-left:6px;color:var(--ink-3)}
+.plan{flex:1;min-height:0;position:relative;overflow:hidden;cursor:grab;touch-action:none;background:var(--paper)}
+.plan.drag{cursor:grabbing}
+.vp{position:absolute;left:0;top:0;transform-origin:0 0;box-shadow:0 0 0 1px var(--line),0 24px 48px -28px rgba(24,24,27,.35);background:#fff}
+.vp img{display:block;user-select:none}
+.vp svg{position:absolute;left:0;top:0;pointer-events:none}
+.vctl{position:absolute;right:14px;bottom:14px;display:flex;flex-direction:column;border:1px solid var(--line);border-radius:10px;background:var(--surface);overflow:hidden}
+.vctl button{width:34px;height:32px;font:500 14px var(--mono);color:var(--ink-2);border-bottom:1px solid var(--line);transition:background .2s}
+.vctl button:last-child{border-bottom:0;font-size:11px}
+.vctl button:hover{background:var(--line-2);color:var(--ink)}
+.plan-hud{position:absolute;left:18px;bottom:16px;display:flex;gap:8px;align-items:center;font:500 11.5px var(--mono);color:var(--ink-2);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px}
+.plan-hud b{color:var(--ink);font-weight:500}
+.legend{border-top:1px solid var(--line);background:var(--surface);padding:10px 14px;display:flex;flex-wrap:wrap;gap:6px 16px;font-size:12px;color:var(--ink-2)}
+.legend span{display:flex;align-items:center;gap:6px}
+.legend i{width:9px;height:9px;border-radius:2px;display:inline-block}
+
+.right{display:flex;flex-direction:column;min-height:0;min-width:0;background:var(--surface)}
+.sum{display:grid;grid-template-columns:1.2fr 1fr 1fr;gap:0;border-bottom:1px solid var(--line)}
+.sum>div{padding:16px 22px;border-right:1px solid var(--line)}
+.sum>div:last-child{border-right:0}
+.sum small{display:block;color:var(--ink-3);font-size:12px;margin-bottom:4px}
+.sum .big{font-size:26px;letter-spacing:-.03em;font-weight:500;line-height:1.1}
+.sum .big em{font-style:normal;color:var(--ink-3);font-size:15px}
+.prog{height:3px;background:var(--line-2);border-radius:2px;margin-top:10px;overflow:hidden}
+.prog i{display:block;height:100%;background:var(--ink);width:0;transition:width .5s var(--ease)}
+.tools{display:flex;gap:10px;align-items:center;padding:10px 22px;border-bottom:1px solid var(--line)}
+.chips{display:flex;gap:4px}
+.chip{padding:4px 10px;border-radius:99px;font-size:12.5px;color:var(--ink-2);border:1px solid transparent;transition:.2s}
+.chip:hover{background:var(--line-2)}
+.chip.on{border-color:var(--ink);color:var(--ink)}
+.chip b{font:500 11px var(--mono);margin-left:4px;color:var(--ink-3)}
+.find{display:flex;align-items:center;gap:6px;color:var(--ink-3);border:1px solid var(--line);border-radius:8px;padding:5px 9px;min-width:150px}
+.find input{border:0;outline:0;background:none;font:inherit;color:var(--ink);width:100%}
+.tbl{flex:1;overflow:auto;min-height:0}
+table{width:100%;border-collapse:collapse}
+thead th{position:sticky;top:0;background:var(--surface);z-index:2;text-align:left;font-weight:500;font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--ink-3);padding:8px 8px;border-bottom:1px solid var(--line)}
+thead th.r,td.r{text-align:right}
+td{padding:0 8px;height:38px;border-bottom:1px solid var(--line-2);white-space:nowrap}
+tr.g td{background:var(--paper);height:34px;border-bottom:1px solid var(--line);font-size:12px;font-weight:500;cursor:pointer;position:sticky;z-index:1}
+tr.g .tot{color:var(--ink-2);font:500 12px var(--mono)}
+tr.g .chev{display:inline-block;transition:transform .25s var(--ease);margin-right:6px;vertical-align:-3px}
+tr.g.shut .chev{transform:rotate(-90deg)}
+tr.l{cursor:pointer;transition:background .15s;animation:rise .45s var(--ease) both;animation-delay:calc(var(--n)*18ms)}
+@keyframes rise{from{opacity:0;transform:translateY(5px)}}
+tr.l:hover td{background:var(--line-2)}
+tr.l.sel td{background:var(--accent-soft)}
+tr.l.sel td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
+td.mk{font:500 12px var(--mono);width:78px;max-width:112px;overflow:hidden;text-overflow:ellipsis}
+td.ds{max-width:170px;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
+td.ds small{color:var(--ink-3);margin-left:6px}
+td.dm{color:var(--ink-2);font-size:12px}
+.cf{display:inline-flex;align-items:center;gap:7px;font:500 12px var(--mono)}
+.cf i{width:34px;height:3px;border-radius:2px;background:var(--line);position:relative;overflow:hidden}
+.cf i::after{content:"";position:absolute;inset:0;width:var(--w);background:var(--ink-2)}
+.cf.lo{color:var(--accent)}.cf.lo i::after{background:var(--accent)}
+.stt{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-2)}
+.dot{width:8px;height:8px;border-radius:50%;border:1.5px solid var(--ink-3)}
+.stt.ok{color:var(--ink)}.stt.ok .dot{background:var(--ink);border-color:var(--ink)}
+.stt.fl{color:var(--accent)}.stt.fl .dot{background:var(--accent);border-color:var(--accent)}
+
+.drawer{border-top:1px solid var(--line);padding:14px 22px 16px;display:grid;grid-template-columns:1.1fr 1fr auto;gap:22px;align-items:start;background:var(--surface);transition:background .25s}
+.drawer h3{font-size:14px;font-weight:600;letter-spacing:-.01em}
+.drawer .basis{font:12px/1.5 var(--mono);color:var(--ink-2);margin-top:6px}
+.drawer .basis b{color:var(--ink);font-weight:500}
+.fld{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.fld label{display:flex;flex-direction:column;gap:5px;font-size:11.5px;color:var(--ink-3)}
+.fld input{width:100%;font:500 13px var(--mono);padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);outline:0;transition:border-color .2s,box-shadow .2s}
+.fld input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.acts{display:flex;flex-direction:column;gap:6px}
+.note{grid-column:1/-1;display:flex;gap:8px;align-items:flex-start;color:var(--accent);font-size:12.5px;padding-top:10px;border-top:1px dashed var(--line)}
+.note[hidden]{display:none}
+
+.queue{border-top:1px solid var(--line);background:var(--surface);padding:10px 14px}
+.queue h4{font-size:12px;font-weight:500;display:flex;justify-content:space-between;align-items:center;color:var(--accent)}
+.queue h4 button{color:var(--ink-3);font-size:12px}
+.queue ul{padding:0;margin-top:4px;display:grid;gap:0}
+.queue li{list-style:none;font-size:12.5px;color:var(--ink-2);padding:5px 0;border-top:1px solid var(--line-2)}
+.queue.off ul{display:none}
+
+.skrow{height:38px;border-bottom:1px solid var(--line-2);position:relative;overflow:hidden}
+
+@media (max-width:1100px){
+  .review{grid-template-columns:1fr;height:auto}
+  .left{min-height:420px;border-right:0;border-bottom:1px solid var(--line)}
+  .right{min-height:70dvh}
+  .drawer{grid-template-columns:1fr}
+}
+@media (max-width:1280px){.hide-m{display:none}}
+@media (max-width:760px){
+  .app{grid-template-columns:1fr}
+  .rail{position:static;height:auto;flex-direction:row;padding:8px 12px;border-right:0;border-bottom:1px solid var(--line)}
+  .rail .sp{display:none}.mark{margin:0 8px 0 0}
+  .upload{grid-template-columns:1fr}
+  .drop{margin:16px;padding:24px;min-height:340px}.drop .ghost{display:none}
+  .how{padding:8px 20px 32px}
+  .top{flex-wrap:wrap;padding:10px 16px}
+  .sum{grid-template-columns:1fr 1fr}.sum>div:first-child{grid-column:1/-1;border-right:0;border-bottom:1px solid var(--line)}
+  .fld{grid-template-columns:repeat(2,1fr)}
+  .hide-s{display:none}
+  .pg{grid-template-columns:36px 1fr 60px}.pg .bar{display:none}
+}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+
+/* ---------- template mapping ---------- */
+.tpl{display:grid;grid-template-columns:minmax(300px,.8fr) minmax(0,1.2fr);height:calc(100dvh - 58px)}
+.tpl>.l{border-right:1px solid var(--line);background:var(--paper);display:flex;flex-direction:column;min-height:0}
+.tpl>.l header,.tpl>.r header{padding:16px 22px;border-bottom:1px solid var(--line);background:var(--surface)}
+.tpl h2{font-size:15px;font-weight:600;letter-spacing:-.01em}
+.tpl .hint{color:var(--ink-2);font-size:12.5px;margin-top:3px}
+.file{display:flex;align-items:center;gap:10px;margin-top:12px;padding:9px 12px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.file b{font-weight:500}.file small{display:block;color:var(--ink-3);font-size:12px}
+.sheets{padding:8px 22px;overflow:auto;flex:1}
+.sh{display:grid;grid-template-columns:1fr auto;gap:2px 12px;padding:12px 0;border-bottom:1px solid var(--line)}
+.sh b{font-weight:500}.sh .k{font:500 11px var(--mono);color:var(--ink-3);text-transform:uppercase;letter-spacing:.05em}
+.sh .c{grid-column:1/-1;display:flex;gap:6px;flex-wrap:wrap;margin-top:6px}
+.tag{font:500 11.5px var(--mono);padding:2px 7px;border-radius:5px;background:var(--line-2);color:var(--ink-2)}
+.tag.on{background:var(--accent-soft);color:var(--accent)}
+.rules{padding:12px 22px;border-top:1px solid var(--line);background:var(--surface);font-size:12.5px;color:var(--ink-2);display:grid;gap:5px}
+.rules div{display:flex;gap:8px}.rules svg{color:var(--ink);margin-top:2px}
+.tpl>.r{display:flex;flex-direction:column;min-height:0;background:var(--surface)}
+.mrow{cursor:default}
+.arrow{color:var(--ink-3);text-align:center;width:28px}
+.rowaddr{font:500 12px var(--mono);color:var(--ink-2)}
+.score{font:500 12px var(--mono)}
+.score.lo{color:var(--accent)}
+.tpl .foot{border-top:1px solid var(--line);padding:12px 22px;display:flex;gap:10px;align-items:center;background:var(--surface)}
+.tpl .foot span{color:var(--ink-2);font-size:12.5px}
+
+/* ---------- pop-out plan window ---------- */
+.tabs .grow{flex:1}
+.tabs .pop{display:flex;align-items:center;gap:6px;padding:6px 10px;margin:0 0 4px;border-radius:8px;font-size:12.5px;color:var(--ink-2);border:1px solid var(--line);align-self:center;white-space:nowrap;transition:background .2s}
+.tabs .pop:hover{background:var(--line-2);color:var(--ink)}
+.away{display:none;flex:1;place-items:center;text-align:center;padding:40px;color:var(--ink-2)}
+.away b{display:block;font-size:15px;color:var(--ink);margin-bottom:6px;font-weight:600}
+.away .btn{margin-top:16px}
+.left.out .plan,.left.out .legend{display:none}
+.left.out .away{display:grid}
+body.pop .rail,body.pop .top,body.pop .right,body.pop .queue,body.pop .legend,body.pop .tabs .pop{display:none}
+body.pop .app{grid-template-columns:1fr}
+body.pop .review{grid-template-columns:1fr;height:100dvh}
+body.pop .left{border-right:0}
+.popnote{position:absolute;left:18px;top:14px;font:500 12px var(--mono);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;color:var(--ink-2);display:none}
+body.pop .popnote{display:block}
+.popnote b{color:var(--accent);font-weight:500}
+
+/* ---------- scale confirmation ---------- */
+.scalebar{border-bottom:1px solid var(--line);background:var(--surface);padding:9px 14px;display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;font-size:12.5px}
+.scalebar .ratio{font:500 15px var(--mono);letter-spacing:-.02em}
+.scalebar .src{color:var(--ink-2);flex:1 1 220px}
+.scalebar .src small{display:block;color:var(--ink-3);font-size:12px}
+.badge{font:500 11px var(--mono);padding:2px 8px;border-radius:99px;text-transform:uppercase;letter-spacing:.04em;border:1px solid var(--line);color:var(--ink-2)}
+.badge.chk{color:var(--accent);border-color:var(--accent);background:var(--accent-soft)}
+.badge.ok{color:var(--bg);background:var(--ink);border-color:var(--ink)}
+.scalebar .btn{padding:5px 10px;font-size:12.5px}
+.calform{flex-basis:100%;display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding-top:8px;border-top:1px dashed var(--line)}
+.calform input{width:92px;font:500 13px var(--mono);padding:5px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);outline:0}
+.calform input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.calform .res{font:500 12px var(--mono);color:var(--ink-2)}
+.calform .res b{color:var(--ink);font-weight:500}.calform .res.bad b{color:var(--accent)}
+.plan.cal{cursor:crosshair}
+.gate{display:flex;gap:8px;align-items:flex-start;color:var(--ink-2);font-size:12.5px}
+
+/* ---------- measuring tools ---------- */
+.tools2{position:absolute;left:14px;top:14px;display:flex;gap:6px;align-items:center;z-index:3}
+.tools2 .btn{padding:6px 10px;font-size:12.5px;box-shadow:0 1px 2px rgba(24,24,27,.06)}
+.tools2 .btn.live{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
+.meas{font:500 12px var(--mono);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;color:var(--ink-2);max-width:360px}
+.meas b{color:var(--accent);font-weight:500}
+.plan.tool{cursor:crosshair}
+.mlink{color:var(--ink-3);text-decoration:underline;cursor:pointer;margin-left:8px}
+.mlink:hover{color:var(--accent)}
+.ag{display:inline-flex;align-items:center;gap:7px;font-size:12.5px;color:var(--ink-2)}
+.ag i{width:7px;height:7px;border-radius:50%;border:1.5px solid var(--ink-3)}
+.ag.ok i{background:var(--ink-3)}
+.ag.bad{color:var(--accent)}.ag.bad i{background:var(--accent);border-color:var(--accent)}
+.ag.mute{color:var(--ink-3)}
+.aibox{grid-column:1/-1;display:flex;gap:16px;align-items:center;justify-content:space-between;padding:10px 12px;border:1px solid var(--accent);border-radius:10px;background:var(--accent-soft);font-size:12.5px;color:var(--ink)}
+.aibox b{display:block;color:var(--accent);font-weight:600;margin-bottom:2px}
+.aibox span{color:var(--ink-2)}
+.acts2{display:flex;gap:6px;flex:none}
+.u{color:var(--ink-3);font:400 12px var(--font);margin-left:2px}
+.tbl{scrollbar-gutter:stable}
+.scalebar{display:block;padding:8px 14px}
+.scalebar .srow{display:flex;align-items:center;gap:8px}
+.scalebar .sgrow{flex:1}
+.scalebar .stxt{color:var(--ink-2);font-size:12px;margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scalebar .calform{margin-top:8px}
+.scalebar .btn{white-space:nowrap}
+.queue.off{padding-top:7px;padding-bottom:7px}
+.legend{font-size:11.5px;padding:7px 14px}
+.review>*,.left,.right,main{min-width:0}
+.scalebar .srow{flex-wrap:wrap}
+.scalebar .stxt{max-width:100%}
+.plan-hud{max-width:calc(100% - 28px);overflow:hidden}
+@media (max-width:760px){
+  .tpl{grid-template-columns:1fr;height:auto}
+  .tpl>.l{border-right:0;border-bottom:1px solid var(--line)}
+  .proc{padding:32px 20px}
+  .drawer{padding:12px 16px}
+  .tools2{flex-wrap:wrap;max-width:calc(100% - 28px)}
+}
+.tools{flex-wrap:wrap;row-gap:8px}
+.chips{flex-wrap:wrap}
+.chip{white-space:nowrap}
+.find{flex:1 1 150px}
+@media (max-width:1100px){.left{min-height:600px}.plan{min-height:320px}}
+.switch{display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:500}
+.switch input{position:absolute;opacity:0;width:1px;height:1px}
+.switch .track{width:38px;height:22px;border-radius:99px;background:var(--line);position:relative;transition:background .2s;flex:none}
+.switch .track i{position:absolute;left:3px;top:3px;width:16px;height:16px;border-radius:50%;background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.25);transition:transform .25s var(--ease)}
+.switch input:checked+.track{background:var(--accent)}
+.switch input:checked+.track i{transform:translateX(16px)}
+.switch input:focus-visible+.track{outline:2px solid var(--accent);outline-offset:2px}
+.pfield{display:grid;gap:6px;padding:14px 0;border-bottom:1px solid var(--line)}
+.pfield b{font-weight:500}
+.pfield input[type=text],.pfield input[type=number]{width:100%;font:500 13px var(--mono);padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);outline:0}
+.pfield input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.pgrid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.pgrid label{display:flex;flex-direction:column;gap:5px;font-size:11.5px;color:var(--ink-3)}
+.sug{color:var(--accent);cursor:help}
+.ratebox{grid-column:1/-1;display:flex;gap:14px;align-items:center;flex-wrap:wrap;padding:10px 12px;border:1px solid var(--line);border-radius:10px;background:var(--paper);font-size:12.5px}
+.ratebox label{display:flex;flex-direction:column;gap:5px;font-size:11.5px;color:var(--ink-3)}
+.ratebox input{width:120px;font:500 13px var(--mono);padding:6px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg);color:var(--ink);outline:0}
+.ratebox input:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.ratebox .rinfo{flex:1 1 220px;color:var(--ink-2)}
+.ratebox .rinfo b{color:var(--ink);font-weight:500}
+a.btn{color:inherit;text-decoration:none}
+.popbar{display:none}
+body.pop .popbar{display:flex;gap:12px;align-items:center;padding:8px 14px;border-bottom:1px solid var(--line);background:var(--surface);flex-wrap:wrap}
+.popbar select{max-width:300px;font:inherit;font-size:12.5px;padding:5px 8px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink)}
+.popbar b{font-weight:600;font-size:13px}
+body.pop .popnote{display:none}
+.sharepanel{position:fixed;top:64px;right:24px;width:380px;max-width:calc(100% - 32px);max-height:calc(100dvh - 88px);overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:18px;box-shadow:0 24px 48px -20px rgba(0,0,0,.35);display:grid;gap:12px;z-index:30}
+.sharepanel[hidden]{display:none}
+.sharepanel h3{font-size:15px;font-weight:600}
+.sharepanel .hint{font-size:12.5px;color:var(--ink-2);margin-top:-6px}
+.sharepanel label{display:grid;gap:5px;font-size:12px;color:var(--ink-3)}
+.sharepanel select,.sharepanel input[type=text]{font:inherit;font-size:13px;padding:7px 9px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);outline:0;width:100%}
+.sharepanel input:focus,.sharepanel select:focus{border-color:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.sharepanel .two{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.shres{border:1px solid var(--accent);background:var(--accent-soft);border-radius:10px;padding:10px 12px;display:grid;gap:8px;font-size:12.5px}
+.shres input{font:12px var(--mono)!important}
+.shres .row{display:flex;gap:8px;flex-wrap:wrap}
+.shlist{display:grid;gap:0;border-top:1px solid var(--line)}
+.shitem{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:9px 0;border-bottom:1px solid var(--line-2);font-size:12.5px}
+.shitem small{color:var(--ink-3);grid-column:1/-1}
+.shchip{font:500 11px var(--mono);padding:1px 7px;border-radius:99px;border:1px solid var(--line);color:var(--ink-2);text-transform:uppercase;letter-spacing:.04em}
+.shchip.on{color:var(--on-accent);background:var(--ink);border-color:var(--ink)}
+.droplogo{position:absolute;top:36px;left:40px}
+.droplogo img{display:block;width:min(240px,50vw);height:auto}
+.droplogo img.lg-dark{display:none}
+:root[data-theme="dark"] .droplogo img.lg-light{display:none}
+:root[data-theme="dark"] .droplogo img.lg-dark{display:block}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .droplogo img.lg-light{display:none}:root:not([data-theme="light"]) .droplogo img.lg-dark{display:block}}
+@media (max-width:760px){.droplogo{top:20px;left:24px}}
+
+
+/* ---------- first-use tour: explains the real buttons, reopened with the ? button ---------- */
+#tour{position:fixed;inset:0;z-index:1000;display:none}#tour.on{display:block}
+#tour .spot{position:fixed;border-radius:10px;box-shadow:0 0 0 9999px rgba(10,10,12,.58);outline:2px solid var(--accent);outline-offset:2px;transition:all .28s var(--ease);pointer-events:none}
+#tour .tip{position:fixed;width:min(330px,calc(100vw - 24px));background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:16px 18px 14px;box-shadow:0 18px 44px -14px rgba(0,0,0,.4);font-family:var(--font);transition:top .28s var(--ease),left .28s var(--ease)}
+#tour .tk{font:500 11px var(--mono);color:var(--accent);letter-spacing:.04em;text-transform:uppercase}
+#tour h3{font-size:16px;letter-spacing:-.01em;margin:4px 0 6px}#tour p{font-size:13.5px;line-height:1.5;color:var(--ink-2);margin:0}
+#tour .tf{display:flex;align-items:center;gap:8px;margin-top:14px}#tour .tf .sp{flex:1}
+#tour .tskip{background:none;border:0;color:var(--ink-3);font:inherit;font-size:12.5px;cursor:pointer;padding:6px 2px}
+</style>
+</head>
+<body>
+<div class="app">
+  <nav class="rail" aria-label="Primary">
+    <a class="brandmark" href="/" title="QuantiDawn" aria-label="QuantiDawn"><img src="/brand/favicon-192.png" alt="QuantiDawn" width="36" height="36"></a>
+    <button data-go="upload" title="Projects" aria-label="Projects"><svg class="i" viewBox="0 0 16 16"><path d="M2 4.5h4l1.5 1.5H14v6.5H2z"/></svg></button>
+    <button class="on" data-go="review" title="Takeoff" aria-label="Takeoff"><svg class="i" viewBox="0 0 16 16"><path d="M2.5 13.5v-11h11M5 11l2.5-3 2 1.5L13 5"/></svg></button>
+    <button data-go="pricing" title="Pricing (optional)" aria-label="Pricing"><svg class="i" viewBox="0 0 16 16"><path d="M8 2v12M10.5 5C10 4 9 3.6 8 3.6c-1.4 0-2.5.8-2.5 2s1 1.8 2.5 2.2 2.5.8 2.5 2.2-1.1 2-2.5 2c-1.100 0-2.100-.4-2.600-1.400"/></svg></button>
+    <div class="sp"></div>
+    <button id="helpBtn" title="How to use the estimator" aria-label="How to use the estimator"><svg class="i" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M6.200 6.300c0-1 .8-1.700 1.800-1.700s1.800.7 1.800 1.600c0 1.200-1.800 1.300-1.800 2.600M8 11.400v.1"/></svg></button>
+    <button id="logoutBtn" title="Sign out" aria-label="Sign out" hidden><svg class="i" viewBox="0 0 16 16"><path d="M6 2.500H3.500v11H6M10 5l3 3-3 3M13 8H6"/></svg></button>
+    <button id="themeBtn" title="Switch between light and dark" aria-label="Switch between light and dark"><svg class="i" id="themeIcon" viewBox="0 0 16 16"></svg></button>
+  </nav>
+
+  <main>
+    <header class="top">
+      <div>
+        <div class="crumb">Projects / Structural <span id="saveLbl" style="margin-left:8px"></span></div>
+        <div class="title" id="ptitle">28-30 Boxshall Street, Brighton</div>
+      </div>
+      <div class="meta hide-s"><span class="sep"></span><span id="metaE"></span><span class="sep"></span><span class="num" id="metaR"></span><span class="sep"></span><span id="metaS"></span></div>
+      <div class="grow"></div>
+      <div class="seg" role="tablist" aria-label="Prototype state">
+        <button data-go="upload">Upload</button>
+        <button data-go="processing">Reading</button>
+        <button data-go="pricing">Pricing</button>
+        <button data-go="template">Template</button>
+        <button class="on" data-go="review">Review</button>
+      </div>
+      <button class="btn" id="demoBtn" title="Show planted AI disagreements so the cross-check can be seen">Demo AI check</button>
+      <button class="btn" id="resetBtn" title="Clear saved measurements">Reset</button>
+      <button class="btn" id="shareBtn" title="Create a private download link for the client">Share link</button>
+      <button class="btn primary" id="exportBtn"><svg class="i" viewBox="0 0 16 16"><path d="M8 2v8m0 0L5 7m3 3l3-3M3 13h10"/></svg>Export workbook</button>
+    </header>
+
+    <!-- UPLOAD -->
+    <section class="view" id="v-upload">
+      <div class="upload">
+        <div class="drop" id="drop" tabindex="0">
+          <div class="droplogo"><img class="lg-light" src="/brand/logo-full.png" alt="QuantiDawn - construction estimating" width="240" height="53"><img class="lg-dark" src="/brand/logo-white.png" alt="" width="240" height="53"></div>
+          <div class="ghost b"></div><div class="ghost"></div>
+          <h1>Drop the plan set. Get a takeoff to check.</h1>
+          <p>PDF drawings from the architect or engineer. We read schedules, count items and measure areas, then hand you every line with its source so you can confirm or correct it.</p>
+          <div class="row">
+            <button class="btn accent" id="pickPdf"><svg class="i" viewBox="0 0 16 16"><path d="M8 11V3m0 0L5 6m3-3l3 3M3 13h10"/></svg>Choose PDF files</button><input type="file" id="pdfIn" accept="application/pdf" multiple hidden>
+            <button class="btn" data-go="template">Use client's Excel template</button>
+            <span style="color:var(--ink-3);font-size:12.5px;flex-basis:100%;margin-top:4px">or drag PDFs here, up to 40 sheets</span>
+          </div>
+        </div>
+        <div class="how">
+          <div>
+            <h2>How a job runs</h2>
+            <div style="height:14px"></div>
+            <div class="step"><i>01</i><div><b>Sheets are read</b><span>Titles, scale, schedules and legends are picked up page by page.</span></div></div>
+            <div class="step"><i>02</i><div><b>Quantities are measured</b><span>Footings, slabs, columns and walls become lines grouped by work item.</span></div></div>
+            <div class="step"><i>03</i><div><b>You verify</b><span>Lines the AI disagrees with come first, then anything that could not be taken off. Nothing leaves as final until you confirm it.</span></div></div>
+          </div>
+          <div class="recent">
+            <h2 style="margin-bottom:6px">Projects</h2>
+            <div id="recent"></div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PROCESSING -->
+    <section class="view" id="v-processing">
+      <div class="proc">
+        <h1 id="procTitle"><span class="live"></span>Reading</h1>
+        <p class="sub" id="procSub"></p>
+        <div id="pages"></div>
+        <div style="margin-top:28px;display:flex;gap:10px">
+          <button class="btn" data-go="upload">Cancel</button>
+          <button class="btn" data-go="review">Back to the project</button>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- TEMPLATE MAPPING -->
+    <section class="view" id="v-template">
+      <div class="tpl">
+        <div class="l">
+          <header>
+            <h2>Client template</h2>
+            <div class="hint">We read the file's layout and fill only the cells meant for typing. Formulas stay untouched.</div>
+            <div id="tplCard" style="margin-top:12px"></div><div style="margin-top:12px"><button class="btn" id="tplPick">Choose client Excel file</button><input type="file" id="tplIn" accept=".xlsx" hidden></div>
+          </header>
+          <div class="sheets" id="sheets"></div>
+          <div class="rules">
+            <div><svg class="i" viewBox="0 0 16 16"><path d="M3 8.500l3 3 7-7"/></svg>Formulas are never overwritten</div>
+            <div><svg class="i" viewBox="0 0 16 16"><path d="M3 8.500l3 3 7-7"/></svg>Rows with several input cells are listed for you to complete</div>
+            <div><svg class="i" viewBox="0 0 16 16"><path d="M3 8.500l3 3 7-7"/></svg>Lines with no matching row go to an Unassigned sheet</div>
+          </div>
+        </div>
+        <div class="r">
+          <header>
+            <h2>Match our takeoff to their rows</h2>
+            <div class="hint">Matched by mark first, then description. Showing <span class="num" id="mC">0</span>. Check the uncertain ones, then fill.</div>
+          </header>
+          <div class="sum">
+            <div><small>Matched</small><div class="big num"><span id="m1">0</span> <em>of <span id="mT">0</span> lines</em></div></div>
+            <div><small>Template rows left empty</small><div class="big num" id="mE">0</div></div>
+            <div><small>Unassigned</small><div class="big num" style="color:var(--accent)" id="mU">0</div></div>
+          </div>
+          <div class="tbl" id="mtbl"></div>
+          <div class="foot"><button class="btn primary" id="fillBtn">Fill template</button><button class="btn" data-go="review">Back to review</button><span id="fillMsg">Original file is never modified. A copy is written.</span></div>
+        </div>
+      </div>
+    </section>
+
+
+    <!-- PRICING (optional per project) -->
+    <section class="view" id="v-pricing">
+      <div class="tpl">
+        <div class="l">
+          <header>
+            <h2>Pricing</h2>
+            <div class="hint">Optional. Switch it on only when the client wants costs as well as quantities.</div>
+            <label class="switch" style="margin-top:14px"><input type="checkbox" id="pOn"><span class="track"><i></i></span><span id="pOnLbl">Include pricing in this project</span></label>
+          </header>
+          <div class="sheets" id="pSide"></div>
+        </div>
+        <div class="r">
+          <header>
+            <h2 id="pTitle">Match lines to the price list</h2>
+            <div class="hint" id="pHint"></div>
+          </header>
+          <div class="sum">
+            <div><small>Matched</small><div class="big num" id="pM">0</div></div>
+            <div><small>Suggested, needs you</small><div class="big num" style="color:var(--accent)" id="pS">0</div></div>
+            <div><small>No rate</small><div class="big num" id="pN">0</div></div>
+          </div>
+          <div class="tbl" id="pTbl"></div>
+          <div class="foot"><span id="pTotal">Estimate excl. GST: not priced yet</span><span class="grow"></span><button class="btn" data-go="review">Back to review</button></div>
+        </div>
+      </div>
+    </section>
+
+    <!-- REVIEW -->
+    <section class="view on" id="v-review">
+      <div class="review">
+        <div class="left">
+          <div class="popbar" id="popbar"><b id="pbName"></b><label style="display:flex;gap:8px;align-items:center;color:var(--ink-3);font-size:12px">Measuring<select id="popLine" aria-label="Line to measure"></select></label><span class="num" id="pbQty" style="color:var(--ink-2);font-size:12.5px"></span><span style="flex:1"></span><button class="btn" id="popDock">Bring back to main window</button></div>
+          <div class="tabs" id="tabs"></div>
+          <div class="scalebar" id="scalebar"></div>
+          <div class="away" id="away"><div><b>Plan is open in another window</b>Measure there and the table here updates.<br><button class="btn" id="dock">Bring plan back here</button></div></div>
+          <div class="plan" id="plan"></div>
+          <div class="queue" id="queue"><h4><span>Not taken off, 3 items</span><button id="qx">Hide</button></h4><ul id="qlist"></ul></div>
+          <div class="legend" id="legend"></div>
+        </div>
+        <div class="right">
+          <div class="sum">
+            <div><small>Verified</small><div class="big num"><span id="vN">0</span> <em>of <span id="vT">0</span> lines</em></div><div class="prog"><i id="vBar"></i></div></div>
+            <div><small id="b2l">Concrete supplied</small><div class="big num"><span id="cTot">0</span> <em id="b2u">m3</em></div></div>
+            <div><small>AI disagrees</small><div class="big num" style="color:var(--accent)"><span id="rN">0</span></div></div>
+          </div>
+          <div class="tools">
+            <div class="chips" id="chips"></div>
+            <div class="grow"></div>
+            <label class="find"><svg class="i" viewBox="0 0 16 16"><circle cx="7" cy="7" r="4.500"/><path d="M10.500 10.500L14 14"/></svg><input id="q" placeholder="Filter lines" aria-label="Filter lines"></label>
+          </div>
+          <div class="tbl" id="tbl"></div>
+          <div class="drawer" id="drawer"></div>
+        </div>
+      </div>
+    </section>
+  </main>
+<div id="tour" role="dialog" aria-label="How to use the estimator"><div class="spot"></div><div class="tip"><div class="tk"></div><h3></h3><p></p><div class="tf"><button class="tskip">Skip tour</button><span class="sp"></span><button class="btn" data-tback>Back</button><button class="btn primary" data-tnext>Next</button></div></div></div>
+<div class="sharepanel" id="sharePanel" role="dialog" aria-label="Send to client" hidden>
+  <h3>Send to client</h3>
+  <p class="hint">Creates a private download link. The client needs no account.</p>
+  <label>What to send<select id="shSrc"><option value="export">Takeoff workbook</option><option value="template">Filled client template</option></select></label>
+  <div class="two"><label>Link works for<select id="shHrs"><option value="24">1 day</option><option value="168" selected>7 days</option><option value="720">30 days</option></select></label>
+  <label>Downloads allowed<select id="shMax"><option value="0">Unlimited</option><option value="1">1</option><option value="3">3</option><option value="10">10</option></select></label></div>
+  <label>Note for your records<input id="shNote" type="text" maxlength="120" placeholder="e.g. Boxshall rev 2 to J. Smith"></label>
+  <button class="btn primary" id="shMake">Create link</button>
+  <div id="shResult"></div>
+  <div class="shlist" id="shList"></div>
+</div>
+</div>
+
+
+<script>
+/* --- every request carries the session check; an ended session returns to the sign-in page --- */
+(()=>{const f=window.fetch.bind(window),tok=(document.querySelector('meta[name="csrf-token"]')||{}).content||"";
+  window.fetch=async(u,o={})=>{const same=typeof u==="string"&&u.startsWith("/"),m=(o.method||"GET").toUpperCase();
+    if(same&&m!=="GET"&&tok)o={...o,headers:{...(o.headers||{}),"X-CSRF-Token":tok}};
+    const r=await f(u,o);
+    if(r.status===401&&same)location.href="/login?next="+encodeURIComponent(location.pathname+location.search);
+    return r}})();
+const QD_USER=(document.querySelector('meta[name="qd-user"]')||{}).content||"";
+
+/* --- project data comes from the server (see server.py); nothing is hard-coded here --- */
+const QS=new URLSearchParams(location.search);
+let PID=QS.get("project")||"boxshall";
+const DEMO_AI=QS.has("demo_ai");
+let PROJ=null,GROUPS=[],LINES=[],SKIPPED=[],SHEETS=[],SCALES=[];
+const AG_PRI={disputed:0,ai_only:1,unconfirmed:2,unrun:3,agreed:3,resolved:3};
+const MEAS={}, TOOL={on:false,pts:[]}, SELS={el:null,idx:null};   // MEAS is keyed by element: one drawn shape feeds every line of that element
+let DRAG=null;
+const MT_NAME={len:"length",area:"area",count:"count"};
+const base=n=>n.A!=null?n.A:(n.L||0)*(n.W||0)*(n.N==null?1:n.N);
+function qty(l){const n=l.n,H=n.H||0;
+  switch(l.calc){
+    case "prism":return base(n)*H;
+    case "plan":return base(n);
+    case "edge":return (n.L||0)*H;
+    case "face2":return (n.L||0)*2*H;
+    case "len":return n.L||0;
+    case "pt":return (n.A||0)*(n.K||0)/1000;
+  }return l.q}
+function dmOf(l){const n=l.n,f=v=>fmt(v);
+  if(l.calc==="pt")return `${f(n.A||0)} m2 x ${n.K} kg/m2`;
+  if(l.calc==="len")return `${f(n.L||0)} m`;
+  if(l.calc==="edge")return `${f(n.L||0)} m x ${f(n.H||0)}`;
+  if(l.calc==="face2")return `${f(n.L||0)} x 2 x ${f(n.H||0)}`;
+  if(n.A!=null)return `${f(n.A)} m2${l.calc==="prism"?" x "+f(n.H||0):""}`;
+  const parts=[f(n.L||0),f(n.W||0)];if(l.calc==="prism")parts.push(f(n.H||0));
+  return parts.join(" x ")+(n.N>1?"  x "+n.N:"")}
+const curLine=()=>LINES.find(x=>x.id===st.sel);
+const curEl=()=>{const l=curLine();return l?l.el:null};
+const mPerPt=()=>PT_MM*SCALES[V.page].ratio/1000;
+const lenPt=p=>p.reduce((a,q,i)=>i?a+Math.hypot(q[0]-p[i-1][0],q[1]-p[i-1][1]):0,0);
+const areaPt=p=>Math.abs(p.reduce((a,q,i)=>{const r=p[(i+1)%p.length];return a+q[0]*r[1]-r[0]*q[1]},0))/2;
+function shapeValue(sh){const m=SCALES[sh.page].ratio?PT_MM*SCALES[sh.page].ratio/1000:0;
+  return sh.kind==="len"?lenPt(sh.pts)*m:sh.kind==="area"?areaPt(sh.pts)*m*m:sh.pts.length}
+function recomputeEl(el){
+  const M=MEAS[el]||[];
+  LINES.filter(x=>x.el===el).forEach(l=>{
+    if(!M.length){if(l.orig){l.n={...l.orig.n};l.q=l.orig.q;l.dm=l.orig.dm;l.st=l.orig.st;l.src2=l.orig.src2;delete l.orig}return}
+    if(!l.orig)l.orig={n:{...l.n},q:l.q,dm:l.dm,st:l.st,src2:l.src2};
+    const tot=M.reduce((a,sh)=>a+shapeValue(sh),0);
+    if(l.mt==="count")l.n.N=tot;else if(l.mt==="area")l.n.A=+tot.toFixed(4);else l.n.L=+tot.toFixed(4);
+    l.q=qty(l);l.dm=dmOf(l);l.st="pn";l.src2="measured";
+  })}
+function toolOK(){return scaleOk(V.page)&&!CAL.on}
+function liveText(){
+  const l=curLine();if(!TOOL.on||!l)return "";
+  const m=mPerPt(),p=TOOL.pts;
+  const v=l.mt==="len"?lenPt(p)*m:l.mt==="area"?(p.length>2?areaPt(p)*m*m:0):p.length;
+  const u=l.mt==="len"?"m":l.mt==="area"?"m2":"";
+  const how=l.mt==="count"?"Click each item":l.mt==="len"?"Click along the run, double-click to finish":"Click corners, double-click to close";
+  return `Measuring <b>${l.mk}</b> by ${MT_NAME[l.mt]}: <b>${l.mt==="count"?v:v.toFixed(2)} ${u}</b><br>${how}. Esc cancels, Backspace undoes`;
+}
+function renderTools(){
+  const el=$("#tools2");if(!el)return;
+  const l=curLine();
+  const dis=!toolOK()||!l;
+  const E=curEl();
+  el.innerHTML=TOOL.on
+    ?`<button class="btn live" id="tFin">Finish</button><button class="btn" id="tCan">Cancel</button><div class="meas">${liveText()}</div>`
+    :`<button class="btn" id="tMeas" ${dis?"disabled":""} title="${!scaleOk(V.page)?"Confirm this sheet's scale first":"Draw on the plan to set the quantity"}"><svg class="i" viewBox="0 0 16 16"><path d="M2 12l3-3 2 2 5-6M2 14h12"/></svg>Measure ${l?l.mk+" ("+MT_NAME[l.mt]+")":""}</button>`
+     +(SELS.el!=null?`<button class="btn" id="tDel">Delete shape <span class="kbd">Del</span></button>`:"")
+     +(MEAS[E]&&MEAS[E].length?`<span class="meas">${MEAS[E].length} shape${MEAS[E].length>1?"s":""} on this element${SELS.el==null?". Click a shape to select, drag a corner to adjust":""}</span>`:"");
+  const a=$("#tMeas");if(a)a.onclick=startMeasure;
+  const f=$("#tFin");if(f)f.onclick=finishShape;
+  const dl=$("#tDel");if(dl)dl.onclick=deleteShape;
+  const c=$("#tCan");if(c)c.onclick=cancelMeasure;
+  $("#plan").classList.toggle("tool",TOOL.on);
+}
+function startMeasure(){
+  const l=curLine();if(!l||!toolOK())return;
+  if(l.sheet-1!==V.page)setPage(l.sheet-1);
+  TOOL.on=true;TOOL.pts=[];renderTools();drawOverlays()}
+function cancelMeasure(){TOOL.on=false;TOOL.pts=[];renderTools();drawOverlays()}
+function addPoint(pt){
+  const l=curLine();if(!TOOL.on||!l)return;
+  if(l.mt==="count"){(MEAS[l.el]=MEAS[l.el]||[]).push({page:V.page,kind:"count",pts:[pt]});recomputeEl(l.el);renderAll();TOOL.on=true;renderTools();drawOverlays();return}
+  TOOL.pts.push(pt);renderTools();drawOverlays()}
+function finishShape(){
+  const l=curLine();if(!TOOL.on||!l)return;
+  if(l.mt==="count"){cancelMeasure();return}
+  const min=l.mt==="len"?2:3;
+  if(TOOL.pts.length<min){cancelMeasure();return}
+  (MEAS[l.el]=MEAS[l.el]||[]).push({page:V.page,kind:l.mt,pts:TOOL.pts.slice()});
+  recomputeEl(l.el);TOOL.on=false;TOOL.pts=[];renderAll();renderTools();drawOverlays()}
+function segDist(p,a,b){const dx=b[0]-a[0],dy=b[1]-a[1],L=dx*dx+dy*dy;let t=L?((p[0]-a[0])*dx+(p[1]-a[1])*dy)/L:0;t=Math.max(0,Math.min(1,t));return Math.hypot(p[0]-a[0]-t*dx,p[1]-a[1]-t*dy)}
+function inPoly(p,pts){let c=false;for(let i=0,j=pts.length-1;i<pts.length;j=i++){const a=pts[i],b=pts[j];if((a[1]>p[1])!==(b[1]>p[1])&&p[0]<(b[0]-a[0])*(p[1]-a[1])/(b[1]-a[1])+a[0])c=!c}return c}
+function findVertex(pt){
+  const tol=10/V.k,E=curEl(),list=MEAS[E]||[];
+  for(let si=list.length-1;si>=0;si--){const sh=list[si];if(sh.page!==V.page)continue;
+    for(let vi=0;vi<sh.pts.length;vi++)if(Math.hypot(sh.pts[vi][0]-pt[0],sh.pts[vi][1]-pt[1])<=tol)return{el:E,si,vi}}
+  return null}
+function findShape(pt){
+  const tol=8/V.k;let best=null;
+  Object.entries(MEAS).forEach(([el,list])=>list.forEach((sh,si)=>{
+    if(sh.page!==V.page)return;
+    const hit=sh.kind==="count"?Math.hypot(sh.pts[0][0]-pt[0],sh.pts[0][1]-pt[1])<=tol*1.3
+      :sh.kind==="len"?sh.pts.some((q,i)=>i&&segDist(pt,sh.pts[i-1],q)<=tol)
+      :inPoly(pt,sh.pts);
+    if(hit)best={el:+el,idx:si}}));
+  return best}
+function deleteShape(){
+  if(SELS.el==null)return;
+  const list=MEAS[SELS.el];if(!list){SELS.el=null;return}
+  list.splice(SELS.idx,1);if(!list.length)delete MEAS[SELS.el];
+  recomputeEl(SELS.el);SELS.el=null;SELS.idx=null;renderAll();renderTools();drawOverlays()}
+function clearMeasure(){const E=curEl();if(E==null)return;delete MEAS[E];recomputeEl(E);renderAll();renderTools();drawOverlays()}
+
+let PAGE_W=1191, PAGE_H=842;   // PDF points of the current sheet; page images are rendered at 2x
+const PALETTE = {PF1:"#d9531e",PF2:"#c4893a",PF3:"#7a8a5a",SF:"#6b6b73",RAFT:"#b5a98f",BULK:"#a9aab0",SLAB:"#c9c9ce",RAMP:"#9a7b66",WALL:"#3f3f46",CC:"#52525b",EDGE:"#d9531e"};
+
+const $ = s => document.querySelector(s), $$ = s => [...document.querySelectorAll(s)];
+const st = {sel:1, filter:"all", q:"", shut:new Set(), sheet:0};
+const fmt = (v,d=2) => v.toLocaleString("en-AU",{minimumFractionDigits:d,maximumFractionDigits:d});
+const STT = {ok:["Verified","ok"], pn:["Pending",""], fl:["Review","fl"]};
+
+/* --- theme: light / dark, remembered per browser; follows the system until you choose --- */
+const SUN='<circle cx="8" cy="8" r="3"/><path d="M8 1.5v1.5M8 13v1.5M1.5 8H3M13 8h1.5M3.4 3.4l1 1M11.600 11.600l1 1M3.400 12.600l1-1M11.600 4.400l1-1"/>';
+const MOON='<path d="M13.500 9.500A5.500 5.500 0 016.500 2.500a5.500 5.500 0 107 7z"/>';
+const sysDark=()=>window.matchMedia&&matchMedia("(prefers-color-scheme: dark)").matches;
+const curTheme=()=>document.documentElement.getAttribute("data-theme")||(sysDark()?"dark":"light");
+function paintThemeIcon(){const t=curTheme();$("#themeIcon").innerHTML=t==="dark"?SUN:MOON;$("#themeBtn").title=t==="dark"?"Switch to light mode":"Switch to dark mode"}
+$("#themeBtn").onclick=()=>{const n=curTheme()==="dark"?"light":"dark";document.documentElement.setAttribute("data-theme",n);try{localStorage.setItem("qd-theme",n)}catch(e){}paintThemeIcon()};
+if(window.matchMedia)matchMedia("(prefers-color-scheme: dark)").addEventListener("change",paintThemeIcon);
+paintThemeIcon();
+
+/* --- views --- */
+let procTimer;
+function go(v){
+  clearInterval(procTimer);
+  $$(".view").forEach(e=>e.classList.toggle("on",e.id==="v-"+v));
+  $$(".seg button").forEach(b=>b.classList.toggle("on",b.dataset.go===v));
+  $$(".rail button[data-go]").forEach(b=>b.classList.toggle("on",b.dataset.go===v||(v==="processing"&&b.dataset.go==="review")));
+    $("#exportBtn").style.visibility=(v==="review")?"visible":"hidden";
+  $("#shareBtn").style.display=(v==="review"||v==="template")?"":"none";
+  if(v!=="review"&&v!=="template")closeShare();
+  $("#demoBtn").style.display=$("#resetBtn").style.display=(v==="review"||v==="template"||v==="pricing")?"":"none";
+  if(v==="processing") runProc();
+  if(v==="review") renderAll();
+  if(v==="template") renderTemplate();
+  if(v==="pricing") renderPricing();
+}
+$$("[data-go]").forEach(b=>b.addEventListener("click",()=>go(b.dataset.go)));
+
+const PROC={names:[],msg:"",err:false};
+function runProc(){
+  const el=$("#pages");
+  $("#procTitle").innerHTML=PROC.names.length?`<span class="live"></span>${PROC.err?"Could not read the files":"Reading "+PROC.names.length+" file"+(PROC.names.length>1?"s":"")}`:"Nothing is being read";
+  $("#procSub").textContent=PROC.names.length?PROC.msg:"Choose PDF files on the Upload screen to start a project.";
+  el.innerHTML=PROC.names.map((n,i)=>`<div class="pg ${PROC.err?"":"work"}"><div class="th"></div><div class="nm">${n}<small>${PROC.err?"failed":"uploading, then rendering each page"}</small></div><div class="bar"><i style="width:${PROC.err?0:55}%"></i></div><div class="st">${PROC.err?"error":"working"}</div></div>`).join("");
+}
+async function uploadPdfs(files){
+  files=[...files].filter(f=>f.name.toLowerCase().endsWith(".pdf"));
+  if(!files.length){PROC.names=["No PDF selected"];PROC.msg="Only PDF files can be uploaded.";PROC.err=true;go("processing");return}
+  PROC.names=files.map(f=>f.name);PROC.msg="This can take a minute for large drawings.";PROC.err=false;go("processing");
+  const post=(u,b)=>fetch(u,{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":(document.querySelector('meta[name="csrf-token"]')||{}).content||""},body:JSON.stringify(b)});
+  try{
+    // hosted: PDFs go straight to storage on one-time links; local: they travel with the request
+    const init=await (await post("/api/uploads/init",{names:files.map(f=>f.name)})).json();
+    let r,j;
+    if(init.direct){
+      for(let i=0;i<files.length;i++){
+        PROC.msg=`Uploading ${files[i].name} (${i+1} of ${files.length})`;runProc();
+        const up=await fetch(init.files[i].url,{method:"PUT",headers:{"Content-Type":"application/pdf"},body:files[i]});
+        if(!up.ok)throw new Error(`Could not upload ${files[i].name} (${up.status}). Files over 50 MB need to be split.`);
+      }
+      PROC.msg="Reading the pages";runProc();
+      r=await post("/api/uploads/finalize",{id:init.id,names:files.map(f=>f.name)});
+    }else{
+      const fd=new FormData();files.forEach(f=>fd.append("files",f));
+      r=await fetch("/api/projects",{method:"POST",body:fd,headers:{"X-CSRF-Token":(document.querySelector('meta[name="csrf-token"]')||{}).content||""}});
+    }
+    j=await r.json();
+    if(!r.ok)throw new Error(j.error||"Upload failed");
+    location.href="?project="+j.id;
+  }catch(e){PROC.err=true;PROC.msg=e.message;runProc()}
+}
+
+/* --- review rendering --- */
+function visible(l){
+  if(st.filter==="review"&&l.st==="ok")return false;
+  if(st.filter==="disp"&&!(l.ag==="disputed"||l.ag==="ai_only"))return false;
+  if(st.filter==="verified"&&l.st!=="ok")return false;
+  if(st.q&&!(l.ds+l.mk).toLowerCase().includes(st.q.toLowerCase()))return false;
+  return true;
+}
+function agCell(l){
+  if(l.ag==="unrun")return `<span class="ag mute"><i></i>AI not run</span>`;
+  if(l.ag==="agreed")return `<span class="ag ok"><i></i>Agrees</span>`;
+  if(l.ag==="resolved")return `<span class="ag ok"><i></i>Resolved</span>`;
+  if(l.ag==="unconfirmed")return `<span class="ag mute"><i></i>AI silent</span>`;
+  if(l.ag==="ai_only")return `<span class="ag bad"><i></i>AI added</span>`;
+  const d=(l.aiq-l.q)/l.q*100;return `<span class="ag bad num"><i></i>AI ${fmt(l.aiq)} (${d>0?"+":""}${d.toFixed(1)}%)</span>`}
+/* --- optional pricing: off by default; a rate only counts when matched with confidence, accepted by a person, or typed --- */
+const PRICING={on:false,list:null,pct:{contingency:10,margin:15,gst:10},currency:"AUD",labourRate:null};   // labourRate: default $/hr when a price entry has hours but no rate
+const usable=l=>(l.rate!=null||l.lhpu!=null)&&l.pm&&["matched","accepted","manual"].includes(l.pm.status);
+const effL=l=>l.lrate!=null?l.lrate:PRICING.labourRate;          // labour $/hr: the line's own, else the project default
+const matCost=l=>usable(l)&&l.rate!=null?l.q*l.rate:null;
+const labHours=l=>usable(l)&&l.lhpu!=null?l.q*l.lhpu:null;
+const labCost=l=>{const h=labHours(l),r=effL(l);return h!=null&&r!=null?h*r:null};
+const costOf=l=>{const a=matCost(l),b=labCost(l);return a==null&&b==null?null:(a||0)+(b||0)};
+const money=v=>(PRICING.currency==="AUD"?"$":PRICING.currency+" ")+v.toLocaleString("en-AU",{minimumFractionDigits:2,maximumFractionDigits:2});
+function priceTotals(){
+  let sub=0,mat=0,lab=0,hrs=0,priced=0,unpriced=0,noLabRate=0;
+  LINES.forEach(l=>{const c=costOf(l);if(c==null)unpriced++;else{sub+=c;priced++}
+    mat+=matCost(l)||0;lab+=labCost(l)||0;hrs+=labHours(l)||0;if(labHours(l)!=null&&effL(l)==null)noLabRate++});
+  const P=PRICING.pct,cont=sub*P.contingency/100,mar=sub*P.margin/100,ex=sub+cont+mar,gst=ex*P.gst/100;
+  return{sub,mat,lab,hrs,cont,mar,ex,gst,total:ex+gst,priced,unpriced,noLabRate}}
+function rateCell(l){
+  if(usable(l))return l.rate!=null?fmt(l.rate):`<span style="color:var(--ink-3)">&mdash;</span>`;
+  if(l.pm&&l.pm.status==="suggested")return `<span class="sug" title="Suggested: ${(l.pm.entry||"").replace(/"/g,"")}. Open the line to accept it.">${fmt(l.pm.rate)}?</span>`;
+  return `<span style="color:var(--ink-3)">&mdash;</span>`}
+function linesForServer(){
+  return LINES.map(l=>{const ok=PRICING.on&&usable(l);
+    return {...l,rate:ok?l.rate:null,lhpu:ok?l.lhpu:null,lrate:ok&&l.lhpu!=null?effL(l):null,rate_source:ok?(l.pm.status==="manual"?"Entered by hand":l.pm.entry+(l.pm.status==="accepted"?" (accepted)":" (price list)")):""}})}
+function renderTable(){
+  let h=`<table><thead><tr><th>Mark</th><th>Description</th><th class="r">Quantity</th>${PRICING.on?'<th class="r">Rate</th><th class="r">Cost</th>':'<th class="hide-s">Dimensions</th>'}<th>AI check</th><th>Status</th></tr></thead><tbody>`;
+  let n=0;
+  GROUPS.forEach((g,gi)=>{
+    const rows=LINES.filter(l=>l.g===g&&visible(l)).sort((a,b)=>AG_PRI[a.ag]-AG_PRI[b.ag]);
+    if(!rows.length)return;
+    const units=[...new Set(rows.map(l=>l.u))],shut=st.shut.has(gi);
+    const tot=units.length===1?rows.reduce((a,l)=>a+l.q,0):null;
+    const gc=rows.reduce((a,l)=>a+(costOf(l)||0),0),anyc=rows.some(l=>costOf(l)!=null);
+    h+=`<tr class="g ${shut?"shut":""}" data-g="${gi}" style="top:30px"><td colspan="4"><svg class="i chev" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg>${g.toUpperCase()} <span style="color:var(--ink-3);font-weight:400;margin-left:6px">${rows.length} lines</span></td>${PRICING.on?`<td class="tot r">${anyc?money(gc):""}</td><td colspan="2"></td>`:`<td class="tot r">${tot==null?"":fmt(tot,1)+" "+units[0]}</td>`}</tr>`;
+    if(!shut)rows.forEach(l=>{
+      const [lab,cls]=STT[l.st];
+      h+=`<tr class="l ${l.id===st.sel?"sel":""}" data-id="${l.id}" style="--n:${n++}"><td class="mk" title="${l.mk}">${l.mk}</td><td class="ds" title="${l.ds.replace(/"/g,"&quot;")}">${l.ds}</td><td class="r num">${fmt(l.q)} <span class="u">${l.u}</span></td>${PRICING.on?`<td class="r num">${rateCell(l)}</td><td class="r num" title="${costOf(l)==null?"":`Materials ${matCost(l)==null?"none":money(matCost(l))}. Labour ${labHours(l)==null?"none":fmt(labHours(l),1)+" hrs"+(labCost(l)==null?", no labour rate":" = "+money(labCost(l)))}`}">${costOf(l)==null?`<span style="color:var(--ink-3)">&mdash;</span>`:fmt(costOf(l))}</td>`:`<td class="dm num hide-s">${l.dm}</td>`}<td>${agCell(l)}</td><td><span class="stt ${cls}"><span class="dot"></span>${lab}</span></td></tr>`;
+    });
+  });
+  if(n===0)h+=LINES.length===0
+    ?`<tr><td colspan="7" style="height:220px;text-align:center;color:var(--ink-2);white-space:normal;padding:0 40px">${PROJ&&PROJ.message?PROJ.message:"No takeoff lines yet."}<br><span style="color:var(--ink-3)">The sheets are loaded on the left. Set each sheet's scale to get ready to measure.</span></td></tr>`
+    :`<tr><td colspan="7" style="height:160px;text-align:center;color:var(--ink-3)">No lines match this filter. <button class="btn" style="margin-left:8px" id="clr">Clear filters</button></td></tr>`;
+  $("#tbl").innerHTML=h+"</tbody></table>";
+  const c=$("#clr");if(c)c.onclick=()=>{st.filter="all";st.q="";$("#q").value="";renderAll()};
+}
+function renderChips(){
+  const all=LINES.length, rev=LINES.filter(l=>l.st!=="ok").length, ver=all-rev;
+  $("#chips").innerHTML=[["all","All",all],["disp","AI disagrees",LINES.filter(l=>l.ag==="disputed"||l.ag==="ai_only").length],["review","To check",rev],["verified","Verified",ver]].map(([k,t,c])=>`<button class="chip ${st.filter===k?"on":""}" data-f="${k}">${t}<b>${c}</b></button>`).join("");
+}
+function renderSummary(){
+  const ver=LINES.filter(l=>l.st==="ok").length;
+  $("#vN").textContent=ver;$("#vT").textContent=LINES.length;
+  $("#vBar").style.width=(LINES.length?ver/LINES.length*100:0)+"%";
+  if(PRICING.on){const t=priceTotals();$("#b2l").textContent=t.unpriced?`Estimate excl. GST, ${t.unpriced} unpriced`:"Estimate excl. GST";$("#cTot").textContent=money(t.ex);$("#b2u").style.display="none"}
+  else{$("#b2l").textContent="Concrete supplied";$("#b2u").style.display="";$("#cTot").textContent=fmt(LINES.filter(l=>/CONCRETE/i.test(l.g)&&l.u==="m3").reduce((a,l)=>a+l.q,0),1)}
+  $("#rN").textContent=LINES.filter(l=>l.ag==="disputed"||l.ag==="ai_only").length;
+  $("#exportBtn").title=ver<LINES.length?"Unverified lines are exported with a PENDING flag":"Ready to export";
+}
+function rateBox(l){
+  const pm=l.pm||{status:"none"};
+  let info,btn="";
+  if(pm.status==="matched")info=`Matched to <b>${pm.entry}</b> (score ${pm.score}).`;
+  else if(pm.status==="accepted")info=`Accepted: <b>${pm.entry}</b>.`;
+  else if(pm.status==="manual")info="Entered by hand.";
+  else if(pm.status==="suggested"){info=`Suggested: <b>${pm.entry}</b> at ${money(pm.rate)}${pm.lhpu!=null?`, ${pm.lhpu} hrs per ${l.u}`:""} (score ${pm.score}). Check it, then accept.`;btn=`<button class="btn" id="acceptRate">Accept ${money(pm.rate)}</button>`}
+  else info=PRICING.list?"No price of the same kind of work and unit. Enter a rate by hand.":"No price list loaded. Enter a rate by hand, or load a price list on the Pricing screen.";
+  return `<div class="ratebox"><label>Material rate per ${l.u}<input class="num" id="rateIn" inputmode="decimal" value="${l.rate!=null?l.rate:""}" placeholder="rate"></label>
+    <label>Labour hrs per ${l.u}<input class="num" id="lhIn" inputmode="decimal" value="${l.lhpu!=null?l.lhpu:""}" placeholder="hours"></label>
+    <label>Labour rate per hr<input class="num" id="lrIn" inputmode="decimal" value="${l.lrate!=null?l.lrate:""}" placeholder="${PRICING.labourRate!=null?PRICING.labourRate+" default":"rate"}"></label>
+    <div class="rinfo">${info}<span id="costInfo">${costInfo(l)}</span></div>${btn}</div>`}
+function costInfo(l){
+  const m=matCost(l),h=labHours(l),lc=labCost(l),c=costOf(l);
+  if(c==null)return h!=null&&effL(l)==null?"<br>Labour hours are set but there is no labour rate, so labour is not costed.":"";
+  return `<br>Materials <b>${m==null?"none":money(m)}</b> &middot; Labour <b>${h==null?"none":fmt(h,1)+" hrs"+(lc==null?", no rate":" = "+money(lc))}</b> &middot; Cost <b>${money(c)}</b>`}
+function renderDrawer(){
+  const l=LINES.find(x=>x.id===st.sel);if(!l){$("#drawer").innerHTML="";return}
+  $("#drawer").innerHTML=`
+   <div><h3>${l.mk}, ${l.ds}</h3>
+     <div class="basis">basis <b>${l.basis}</b><br>result <b>${fmt(l.q)} ${l.u}</b> &middot; ${MEAS[l.el]&&MEAS[l.el].length?`<b>measured on plan</b> (${MEAS[l.el].length} shape${MEAS[l.el].length>1?"s":""})<a class="mlink" id="clrM">clear</a>`:(l.el<0?"added by the AI":"from sheet "+SHEETS[l.sheet-1].n+" legend")}</div></div>
+   <div class="fld">
+     ${[["Length","L"],["Width","W"],["Height","H"],["Area","A"],["Count","N"],["kg/m2","K"]].filter(([t,k])=>l.n[k]!=null&&!(k==="N"&&l.mt!=="count"&&l.n.N===1)).map(([t,k])=>`<label>${t}<input class="num" data-k="${k}" value="${l.n[k]}" inputmode="decimal"></label>`).join("")}
+   </div>
+   <div class="acts">
+     <button class="btn ${l.st==="ok"?"":"primary"}" id="vf" ${l.st!=="ok"&&(!scaleOk(l.sheet-1)||l.ag==="disputed"||l.ag==="ai_only")?"disabled title=\"Resolve the scale and any AI disagreement first\"":""}>${l.st==="ok"?"Unverify":"Verify line"} <span class="kbd">V</span></button>
+     <button class="btn" id="fg">${l.st==="fl"?"Clear flag":"Flag for review"} <span class="kbd">F</span></button>
+   </div>
+   ${PRICING.on?rateBox(l):""}
+   ${l.agr&&(l.ag==="disputed"||l.ag==="ai_only"||l.ag==="unconfirmed")?`<div class="aibox"><div><b>${l.ag==="unconfirmed"?"AI could not confirm this line":"AI disagrees"}</b><span>${l.agr}</span></div>${l.ag==="unconfirmed"?"":`<div class="acts2"><button class="btn" id="keepL">Keep logic value</button><button class="btn" id="useAI">Use AI value (${fmt(l.aiq)})</button></div>`}</div>`:""}
+   <div class="note" ${l.note||!scaleOk(l.sheet-1)?"":"hidden"}><svg class="i" viewBox="0 0 16 16"><path d="M8 2.500l6 10.500H2z M8 7v2.500M8 11.200v.1"/></svg><span>${l.note||""}${!scaleOk(l.sheet-1)?(l.note?" ":"")+"Sheet "+SHEETS[l.sheet-1].n+" scale is unconfirmed, so this line cannot be verified yet.":""}</span></div>`;
+  $$("#drawer input").forEach(i=>i.addEventListener("input",()=>{
+    l.n[i.dataset.k]=parseFloat(i.value)||0;l.orig=l.orig||null;
+    l.q=qty(l);l.dm=dmOf(l);
+    if(l.st==="ok")l.st="pn";
+    $("#drawer .basis b:last-of-type").textContent=fmt(l.q)+" "+l.u;
+    renderTable();renderChips();renderSummary();
+  }));
+  $("#vf").onclick=()=>{l.st=l.st==="ok"?"pn":"ok";renderAll()};
+  const readNum=id=>{const e=$(id);if(!e||e.value.trim()==="")return null;const v=parseFloat(e.value);return isNaN(v)||v<0?null:v};
+  const onCost=()=>{
+    const rate=readNum("#rateIn"),h=readNum("#lhIn"),lr=readNum("#lrIn");
+    if(rate==null&&h==null&&lr==null){const p0=l.pm0;l.rate=p0&&p0.status==="matched"?p0.rate:null;l.lhpu=p0&&p0.status==="matched"?p0.lhpu:null;l.lrate=p0&&p0.status==="matched"?p0.lrate:null;l.pm=p0?{...p0}:{status:"none"}}
+    else{l.rate=rate;l.lhpu=h;l.lrate=lr;l.pm={...(l.pm||{}),status:"manual",rate,entry:"entered by hand"}}
+    renderTable();renderSummary();scheduleSave();const ci=$("#costInfo");if(ci)ci.innerHTML=costInfo(l)};
+  ["#rateIn","#lhIn","#lrIn"].forEach(id=>{const e=$(id);if(e)e.oninput=onCost});
+  const ar=$("#acceptRate");if(ar)ar.onclick=()=>{l.rate=l.pm.rate;l.lhpu=l.pm.lhpu!=null?l.pm.lhpu:null;l.lrate=l.pm.lrate!=null?l.pm.lrate:null;l.pm={...l.pm,status:"accepted"};renderAll()};
+  const kl=$("#keepL");if(kl)kl.onclick=()=>{l.ag="resolved";l.agr="";renderAll()};
+  const ua=$("#useAI");if(ua)ua.onclick=()=>{l.q=l.aiq;l.dm="AI value, check dimensions";l.ag="resolved";l.agr="";renderAll()};
+  const cm=$("#clrM");if(cm)cm.onclick=clearMeasure;
+  $("#fg").onclick=()=>{l.st=l.st==="fl"?"pn":"fl";renderAll()};
+}
+  
+/* --- scale: detected per sheet, confirmed by a human --- */
+const PT_MM=25.4/72;
+// each sheet's scale arrives from core/scale.py (title block + PDF page size); a person still confirms it
+const CAL={on:false,pts:[],real:""};
+const ENT={on:false,val:""};
+function scaleOk(i){return SCALES[i].status==="ok"}
+function renderScale(){
+  const el=$("#scalebar");if(!el)return;
+  const sc=SCALES[V.page],lbl={ok:["Confirmed","ok"],check:["Needs check","chk"],unknown:["Not detected","chk"]}[sc.status];
+  let h=`<div class="srow"><span class="ratio">${sc.ratio?"1:"+sc.ratio:"1:?"}</span><span class="badge ${lbl[1]}">${lbl[0]}</span><span class="sgrow"></span>`;
+  const txt=`${sc.src}${sc.note?". "+sc.note:""}`;
+  if(sc.status!=="ok"&&sc.ratio)h+=`<button class="btn primary" id="scOk">Confirm 1:${sc.ratio}</button>`;
+  h+=`<button class="btn" id="scEnt">${ENT.on?"Cancel":"Enter scale"}</button>`;
+  h+=`<button class="btn" id="scCal">${CAL.on?"Cancel check":"Check with 2 points"}</button></div><div class="stxt" title="${txt.replace(/"/g,"&quot;")}">${txt}</div>`;
+  if(ENT.on){
+    const v=parseFloat(ENT.val),okv=v>0&&v<=10000;
+    h+=`<div class="calform"><span class="res">Drawing scale 1:</span><input id="entIn" class="num" inputmode="numeric" value="${ENT.val}" placeholder="200" aria-label="Scale denominator">
+      ${[20,50,100,200,250,500].map(n=>`<button class="chip ${v===n?"on":""}" data-ent="${n}">1:${n}</button>`).join("")}
+      <button class="btn primary" id="entUse" ${okv?"":"disabled"}>Use 1:${okv?Math.round(v):"?"}</button>
+      <span class="res" style="flex-basis:100%">Typed by hand: it isn't cross-checked. Use "Check with 2 points" afterwards if you can.</span></div>`;
+  }
+  if(CAL.on){
+    if(CAL.pts.length<2)h+=`<div class="calform"><span class="res">Click two ends of a dimension you know, such as grid to grid or a labelled footing. <b>${CAL.pts.length}/2</b></span></div>`;
+    else{
+      const dpt=Math.hypot(CAL.pts[0][0]-CAL.pts[1][0],CAL.pts[0][1]-CAL.pts[1][1]);
+      const real=parseFloat(CAL.real),imp=real?real*1000/(dpt*PT_MM):null;
+      const cur=sc.ratio?dpt*PT_MM*sc.ratio/1000:null;
+      const off=imp&&sc.ratio?Math.abs(imp-sc.ratio)/sc.ratio*100:null;
+      h+=`<div class="calform"><label>Real length (m) <input id="calIn" class="num" inputmode="decimal" value="${CAL.real}" placeholder="9.60"></label>
+        <span class="res ${off!==null&&off>3?"bad":""}">${cur?`at 1:${sc.ratio} this line measures <b>${cur.toFixed(2)} m</b>`:`line is ${(dpt*PT_MM).toFixed(0)} mm on paper`}${imp?` &middot; implied scale <b>1:${Math.round(imp)}</b>${off!==null?` (${off.toFixed(1)}% ${off<=3?"off, matches":"off, differs"})`:""}`:""}</span>
+        ${imp?`<button class="btn ${off!==null&&off<=3?"primary":""}" id="calUse">${off!==null&&off<=3?"Matches, confirm scale":"Use 1:"+Math.round(imp)}</button>`:""}</div>`;
+    }
+  }
+  el.innerHTML=h;
+  $("#scEnt").onclick=()=>{ENT.on=!ENT.on;ENT.val=sc.ratio?String(sc.ratio):"";CAL.on=false;CAL.pts=[];$("#plan").classList.remove("cal");renderScale();drawOverlays();if(ENT.on){const i=$("#entIn");i&&i.focus()}};
+  const ei=$("#entIn");if(ei){ei.oninput=()=>{ENT.val=ei.value;const pos=ei.selectionStart;renderScale();const n=$("#entIn");n.focus();n.setSelectionRange(pos,pos)}}
+  $$("[data-ent]").forEach(b=>b.onclick=()=>{ENT.val=b.dataset.ent;renderScale()});
+  const eu=$("#entUse");if(eu)eu.onclick=()=>{sc.ratio=Math.round(parseFloat(ENT.val));sc.status="ok";sc.src="Entered by hand";sc.note="Not cross-checked against a measured dimension.";ENT.on=false;afterScale()};
+  const ok=$("#scOk");if(ok)ok.onclick=()=>{sc.status="ok";CAL.on=false;CAL.pts=[];afterScale()};
+  $("#scCal").onclick=()=>{ENT.on=false;CAL.on=!CAL.on;CAL.pts=[];CAL.real="";$("#plan").classList.toggle("cal",CAL.on);renderScale();drawOverlays()};
+  const inp=$("#calIn");if(inp){inp.oninput=()=>{CAL.real=inp.value;const pos=inp.selectionStart;renderScale();const n=$("#calIn");n.focus();n.setSelectionRange(pos,pos)};inp.focus&&0}
+  const use=$("#calUse");if(use)use.onclick=()=>{
+    const dpt=Math.hypot(CAL.pts[0][0]-CAL.pts[1][0],CAL.pts[0][1]-CAL.pts[1][1]);
+    const imp=parseFloat(CAL.real)*1000/(dpt*PT_MM);
+    const std=[50,100,200,250,500].find(x=>Math.abs(x-imp)/x<.04);
+    const cur=sc.ratio&&Math.abs(imp-sc.ratio)/sc.ratio<=.03;
+    sc.ratio=cur?sc.ratio:(std||Math.round(imp));sc.status="ok";sc.src=cur?"Confirmed against a measured dimension":"Set from a measured dimension";sc.note=`Checked with a ${parseFloat(CAL.real).toFixed(2)} m dimension.`;
+    CAL.on=false;CAL.pts=[];$("#plan").classList.remove("cal");afterScale()};
+}
+function afterScale(){scheduleSave();ENT.on=false;$("#plan").classList.remove("cal");renderScale();renderTools();drawOverlays();renderDrawer();renderTable()}
+
+/* --- real page viewer: rendered PDF pages, pan/zoom, overlay layer in PDF-point coordinates --- */
+const V={page:0,k:1,x:0,y:0,ready:false,overlays:[],flash:null};
+function fitView(){const el=$("#plan"),w=el.clientWidth,h=el.clientHeight;V.k=Math.min(w/PAGE_W,h/PAGE_H)*.98;V.x=(w-PAGE_W*V.k)/2;V.y=(h-PAGE_H*V.k)/2;paint()}
+function paint(){
+  const vp=$("#vp");if(!vp)return;
+  if(TOOL.on&&TOOL.pts.length)clearTimeout(V._t),V._t=setTimeout(drawOverlays,60);
+  vp.style.transform=`translate(${V.x}px,${V.y}px) scale(${V.k})`;
+  scheduleTile();
+  const z=$("#zoomLbl");if(z)z.textContent=Math.round(V.k*100)+"%";
+  $$("#ovl .src").forEach(r=>r.setAttribute("stroke-width",(2/V.k).toFixed(2)));
+  $$("#ovl .lbl").forEach(r=>{r.setAttribute("font-size",(12/V.k).toFixed(2));r.setAttribute("stroke-width",(3/V.k).toFixed(2))});
+  $$("#ovl .pt").forEach(r=>{r.setAttribute("r",(5/V.k).toFixed(2));r.setAttribute("stroke-width",(2/V.k).toFixed(2))});
+}
+/* sharp detail: the base image is rendered at 2 px per point; past that, load a crop at the zoom you are viewing */
+const BASE_Z=2;let tileT=null,tileSeq=0;
+function removeTile(){const t=$("#tileImg");if(t)t.style.display="none";tileSeq++}
+function scheduleTile(){clearTimeout(tileT);tileT=setTimeout(loadTile,220)}
+function loadTile(){
+  if(!V.ready||!PROJ||!PROJ.pages[V.page])return;
+  const pg=PROJ.pages[V.page],el=$("#plan"),dpr=window.devicePixelRatio||1,lbl=$("#sharpLbl");
+  const need=V.k*dpr,cap=pg.max_z||8;
+  if(need<=BASE_Z*1.05){removeTile();if(lbl)lbl.textContent="";return}
+  const atLimit=need>cap*1.02;
+  if(lbl)lbl.textContent=atLimit?"at the PDF's own resolution":"sharp";
+  const z=Math.min(cap,Math.ceil(need*2)/2);
+  let x0=-V.x/V.k,y0=-V.y/V.k,x1=x0+el.clientWidth/V.k,y1=y0+el.clientHeight/V.k;
+  const mx=(x1-x0)*.15,my=(y1-y0)*.15,g=25;
+  x0=Math.max(0,Math.floor((x0-mx)/g)*g);y0=Math.max(0,Math.floor((y0-my)/g)*g);
+  x1=Math.min(PAGE_W,Math.ceil((x1+mx)/g)*g);y1=Math.min(PAGE_H,Math.ceil((y1+my)/g)*g);
+  const url=`/tile/${PID}/${V.page+1}?x=${x0}&y=${y0}&w=${x1-x0}&h=${y1-y0}&z=${z}`;
+  const seq=++tileSeq,img=new Image();
+  img.onload=()=>{if(seq!==tileSeq)return;const t=$("#tileImg");
+    t.src=url;t.style.cssText=`position:absolute;pointer-events:none;display:block;left:${x0}px;top:${y0}px;width:${x1-x0}px;height:${y1-y0}px`};
+  img.src=url}
+function zoomAt(f,cx,cy){const el=$("#plan"),nk=Math.max(.15,Math.min(8,V.k*f)),r=nk/V.k;
+  cx=cx??el.clientWidth/2;cy=cy??el.clientHeight/2;V.x=cx-(cx-V.x)*r;V.y=cy-(cy-V.y)*r;V.k=nk;paint()}
+function setPage(i,keep){
+  V.page=i;removeTile();
+  const pg=PROJ.pages[i];PAGE_W=pg.w;PAGE_H=pg.h;
+  $("#pageImg").src=pg.img;$("#pageImg").style.cssText=`width:${PAGE_W}px;height:${PAGE_H}px`;
+  $("#vp").style.width=PAGE_W+"px";$("#vp").style.height=PAGE_H+"px";
+  const ov=$("#ovl");ov.setAttribute("viewBox",`0 0 ${PAGE_W} ${PAGE_H}`);ov.setAttribute("width",PAGE_W);ov.setAttribute("height",PAGE_H);
+  $("#pageLbl").innerHTML=`<b>${SHEETS[i].n}</b> ${SHEETS[i].t}`;$("#pageNo").textContent=`${i+1} / ${SHEETS.length}`;
+  renderTabs();CAL.on=false;CAL.pts=[];$("#plan").classList.remove("cal");renderScale();drawOverlays();if(!keep)fitView();
+}
+function drawOverlays(){
+  const g=$("#ovl");if(!g)return;
+  let h="";
+  V.overlays.filter(o=>o.page===V.page).forEach(o=>{
+    h+=o.kind==="poly"?`<polygon points="${o.pts.map(p=>p.join(",")).join(" ")}" fill="${o.fill||"none"}" stroke="${o.stroke||"var(--accent)"}" stroke-width="2"/>`
+      :`<rect x="${o.pts[0]}" y="${o.pts[1]}" width="${o.pts[2]}" height="${o.pts[3]}" fill="none" stroke="${o.stroke||"var(--accent)"}" stroke-width="2"/>`});
+  if(V.flash&&V.flash.page===V.page){const [x,y,w,hh]=V.flash.box;
+    h+=`<rect class="src" x="${x-2}" y="${y-1.5}" width="${w+4}" height="${hh+3}" rx="1.5" fill="rgba(217,83,30,.14)" stroke="var(--accent)" stroke-width="${(2/V.k).toFixed(2)}"/>`}
+  const col=id=>id===curEl()?"var(--accent)":"var(--ink-2)";
+  Object.entries(MEAS).forEach(([id,list])=>list.forEach((sh,si)=>{if(sh.page!==V.page)return;
+    const isSel=SELS.el===+id&&SELS.idx===si;
+    const c=isSel?"var(--accent)":col(+id),w=((isSel?3.4:2)/V.k).toFixed(2),pts=sh.pts.map(q=>q.join(",")).join(" "),a=sh.pts[0],k=(12/V.k).toFixed(2);
+    const lbl=sh.kind==="count"?"":`<text class="lbl" x="${sh.pts[Math.floor(sh.pts.length/2)][0]+4}" y="${sh.pts[Math.floor(sh.pts.length/2)][1]-4}" font-size="${k}" font-family="Geist Mono,monospace" fill="${c}" stroke="#fff" stroke-width="${(3/V.k).toFixed(2)}" paint-order="stroke">${shapeValue(sh).toFixed(2)} ${sh.kind==="len"?"m":"m2"}</text>`;
+    if(sh.kind==="area")h+=`<polygon class="src" points="${pts}" fill="${c}" fill-opacity=".16" stroke="${c}" stroke-width="${w}"/>`;
+    else if(sh.kind==="len")h+=`<polyline class="src" points="${pts}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linejoin="round"/>`;
+    else h+=`<circle class="pt" cx="${a[0]}" cy="${a[1]}" r="${(6/V.k).toFixed(2)}" fill="${c}" fill-opacity=".85" stroke="#fff" stroke-width="${w}"/>`;
+    h+=lbl;
+  }));
+  if(!TOOL.on&&!CAL.on)(MEAS[curEl()]||[]).forEach(sh=>{if(sh.page===V.page&&sh.kind!=="count")sh.pts.forEach(q=>h+=`<circle class="pt h" cx="${q[0]}" cy="${q[1]}" r="${(5/V.k).toFixed(2)}" fill="var(--surface)" stroke="var(--accent)" stroke-width="${(2/V.k).toFixed(2)}"/>`)});
+  if(TOOL.on&&TOOL.pts.length){
+    const w=(2/V.k).toFixed(2),pts=TOOL.pts.map(q=>q.join(",")).join(" ");
+    h+=`<polyline class="src" points="${pts}" fill="${curLine().mt==="area"?"rgba(217,83,30,.12)":"none"}" stroke="var(--accent)" stroke-width="${w}" stroke-dasharray="${(6/V.k).toFixed(1)} ${(4/V.k).toFixed(1)}"/>`;
+    TOOL.pts.forEach(q=>h+=`<circle class="pt" cx="${q[0]}" cy="${q[1]}" r="${(4/V.k).toFixed(2)}" fill="var(--surface)" stroke="var(--accent)" stroke-width="${w}"/>`);
+  }
+  if(CAL.on&&CAL.pts.length){
+    const c=CAL.pts,w=(2/V.k).toFixed(2),r=(5/V.k).toFixed(2);
+    if(c.length===2)h+=`<line class="src" x1="${c[0][0]}" y1="${c[0][1]}" x2="${c[1][0]}" y2="${c[1][1]}" stroke="var(--accent)" stroke-width="${w}"/>`;
+    c.forEach(q=>h+=`<circle class="pt" cx="${q[0]}" cy="${q[1]}" r="${r}" fill="var(--surface)" stroke="var(--accent)" stroke-width="${w}"/>`);
+  }
+  g.innerHTML=h;
+}
+function flyTo(page,box){
+  const el=$("#plan");V.flash={page,box};
+  if(V.page!==page)setPage(page,true);else drawOverlays();
+  const k=Math.min(3.2,(el.clientWidth*.9)/Math.max(box[2],220));
+  V.k=k;V.x=el.clientWidth/2-(box[0]+box[2]/2)*k;V.y=el.clientHeight/2-(box[1]+box[3]/2)*k;
+  const vp=$("#vp");vp.style.transition="transform .5s cubic-bezier(.16,1,.3,1)";paint();setTimeout(()=>vp.style.transition="",520);
+}
+function renderPlan(){
+  const el=$("#plan");
+  if(!V.ready){
+    el.innerHTML=`<div id="vp" class="vp"><img id="pageImg" alt="Plan sheet" draggable="false"><img id="tileImg" alt="" draggable="false" style="position:absolute;display:none;pointer-events:none"><svg id="ovl" viewBox="0 0 ${PAGE_W} ${PAGE_H}" width="${PAGE_W}" height="${PAGE_H}"></svg></div>
+    <div class="tools2" id="tools2"></div><div class="vctl"><button id="zi" aria-label="Zoom in">+</button><button id="zo" aria-label="Zoom out">&minus;</button><button id="zf" aria-label="Fit to view">Fit</button></div>
+    <div class="popnote" id="popnote"></div>
+    <div class="plan-hud"><span id="pageLbl"></span><span class="sep"></span><span>sheet <b id="pageNo"></b></span><span class="sep"></span><span id="zoomLbl" class="num">100%</span><span class="sep"></span><span id="sharpLbl"></span></div>`;
+    $("#vp").style.width=PAGE_W+"px";$("#vp").style.height=PAGE_H+"px";
+    $("#pageImg").style.cssText=`width:${PAGE_W}px;height:${PAGE_H}px`;
+    $("#zi").onclick=()=>zoomAt(1.35);$("#zo").onclick=()=>zoomAt(1/1.35);$("#zf").onclick=fitView;
+    el.addEventListener("wheel",e=>{e.preventDefault();const r=el.getBoundingClientRect();zoomAt(e.deltaY<0?1.12:1/1.12,e.clientX-r.left,e.clientY-r.top)},{passive:false});
+    let d=null;
+    const toPage=e=>{const r=el.getBoundingClientRect();return[(e.clientX-r.left-V.x)/V.k,(e.clientY-r.top-V.y)/V.k]};
+    el.addEventListener("pointerdown",e=>{
+      if(e.target.closest(".vctl,.tools2"))return;
+      if(!TOOL.on&&!CAL.on){const v=findVertex(toPage(e));if(v){DRAG={...v,moved:false};el.setPointerCapture(e.pointerId);el.classList.add("drag");return}}
+      d={x:e.clientX,y:e.clientY,ox:V.x,oy:V.y};el.setPointerCapture(e.pointerId);el.classList.add("drag")});
+    el.addEventListener("pointermove",e=>{
+      if(DRAG){const sh=MEAS[DRAG.el][DRAG.si];sh.pts[DRAG.vi]=toPage(e);DRAG.moved=true;
+        recomputeEl(DRAG.el);
+        if(!DRAG.raf)DRAG.raf=requestAnimationFrame(()=>{if(!DRAG)return;DRAG.raf=0;drawOverlays();renderTable();renderDrawer();renderSummary();scheduleSync()});return}
+      if(!d)return;V.x=d.ox+e.clientX-d.x;V.y=d.oy+e.clientY-d.y;paint()});
+    ["pointerup","pointercancel"].forEach(t=>el.addEventListener(t,e=>{
+      if(DRAG){const m=DRAG.moved;DRAG=null;el.classList.remove("drag");if(m){renderAll();renderTools();drawOverlays()}return}
+      const moved=d?Math.hypot(e.clientX-d.x,e.clientY-d.y):99;
+      if(d&&!TOOL.on&&!CAL.on&&moved<4&&e.type==="pointerup"){
+        const hit=findShape(toPage(e));
+        if(hit){SELS.el=hit.el;SELS.idx=hit.idx;const c=curLine();
+          if(!c||c.el!==hit.el){const nl=LINES.find(x=>x.el===hit.el);if(nl){st.sel=nl.id;V.lastSel=nl.id}}
+          renderAll();renderTools();drawOverlays()}
+        else if(SELS.el!=null){SELS.el=null;SELS.idx=null;renderTools();drawOverlays()}
+      }
+      if(d&&TOOL.on&&moved<4&&e.type==="pointerup"){
+        const r=el.getBoundingClientRect();addPoint([(e.clientX-r.left-V.x)/V.k,(e.clientY-r.top-V.y)/V.k]);
+      }
+      if(d&&CAL.on&&moved<4&&e.type==="pointerup"&&CAL.pts.length<2){
+        const r=el.getBoundingClientRect();CAL.pts.push([(e.clientX-r.left-V.x)/V.k,(e.clientY-r.top-V.y)/V.k]);renderScale();drawOverlays();
+      }
+      d=null;el.classList.remove("drag")}));
+    el.addEventListener("dblclick",()=>{if(TOOL.on){const p=TOOL.pts;if(p.length>1&&Math.hypot(p[p.length-1][0]-p[p.length-2][0],p[p.length-1][1]-p[p.length-2][1])<3)p.pop();finishShape()}else fitView()});
+    window.addEventListener("resize",()=>{if($("#v-review").classList.contains("on"))fitView()});
+    renderTools();V.ready=true;V.lastSel=st.sel;V.flash=null;setPage(V.page);
+    requestAnimationFrame(()=>{fitView();V.fitted=true});
+  }
+}
+function applyFocus(){
+  const l=curLine();if(!l||!V.ready)return;
+  renderTools();
+  if(!IS_POP&&document.querySelector(".left.out"))return;           // the plan is in the pop-out window right now
+  if(V.lastSel===l.id)return;
+  V.lastSel=l.id;SELS.el=null;SELS.idx=null;renderTools();
+  const sh=(MEAS[l.el]||[])[0];
+  if(sh){const xs=sh.pts.map(q=>q[0]),ys=sh.pts.map(q=>q[1]),x=Math.min(...xs),y=Math.min(...ys);
+    flyTo(sh.page,[x-30,y-30,Math.max(...xs)-x+60,Math.max(...ys)-y+60]);return}
+  if(l.src){flyTo(l.sheet-1,l.src);return}
+  if(l.sheet-1!==V.page){V.flash=null;setPage(l.sheet-1)}
+}
+function renderTabs(){
+  $("#tabs").innerHTML=`<div class="grow" style="order:2"></div><button class="pop" style="order:3" id="popBtn" title="Open the plan in its own window"><svg class="i" viewBox="0 0 16 16"><path d="M9 2.500h4.500V7M13.500 2.500L7.500 8.500M11 9.500V13H3V5h3.500"/></svg>Pop out</button>`+SHEETS.map((s,i)=>`<button class="${i===V.page?"on":""}" data-sh="${i}">${s.n}<small>${s.c||"-"}</small></button>`).join("");
+  const pb=$("#popBtn");if(pb)pb.onclick=openPop;
+  $("#legend").innerHTML=`<span>${PROJ&&PROJ.sample?"Sample sheets are the estimator's marked-up PDF. A real job shows the clean drawing.":(PROJ?PROJ.ai:"")}</span><span style="margin-left:auto" class="num hide-m">drag to pan, scroll to zoom, double-click to fit</span>`;
+}
+function renderAll(){renderTabs();renderChips();renderSummary();renderTable();renderDrawer();renderPlan();applyFocus();renderPopBar();scheduleSave()}
+
+
+let TPL=null;
+function renderTemplate(){
+  const none=!TPL;
+  $("#tplCard").innerHTML=none?`<div class="hint">${LINES.length?"Choose the client's Excel file. We read its layout and show which of its rows our lines would fill.":"This project has no takeoff lines yet, so there is nothing to fill a template with."}</div>`
+    :`<div class="file"><svg class="i" viewBox="0 0 16 16"><path d="M4 2h5l3 3v9H4zM9 2v3h3"/></svg><div><b>${TPL.name}</b><small>${TPL.sheets.length} sheet${TPL.sheets.length>1?"s":""} read</small></div></div>`;
+  $("#sheets").innerHTML=none?"":TPL.sheets.map(x=>`<div class="sh"><div><b>${x.name}</b></div><span class="k">${x.kind}</span><div class="hint" style="grid-column:1/-1;margin:0">${x.items?x.items+" rows, "+x.typed+" with typed input cells":"No line items found"}</div><div class="c">${x.columns.map(c=>`<span class="tag ${x.kind==="takeoff"||x.kind==="boq"?"on":""}">${c}</span>`).join("")}</div></div>`).join("");
+  $("#m1").textContent=none?0:TPL.matches.length;$("#mT").textContent=LINES.length;
+  $("#mE").textContent=none?0:TPL.unfilled_rows;$("#mU").textContent=none?0:TPL.unmatched_lines;
+  $("#mC").textContent=none?"0":Math.min(TPL.matches.length,200)+" of "+TPL.matches.length;
+  $("#mtbl").innerHTML=none?"":`<table><thead><tr><th>Our line</th><th class="arrow"></th><th>Their row</th><th>Matched by</th><th class="r">Score</th><th>Status</th></tr></thead><tbody>`+
+    TPL.matches.slice(0,200).map((m,i)=>`<tr class="l mrow" style="--n:${Math.min(i,20)}"><td class="ds">${m.line}</td><td class="arrow">&rarr;</td><td class="rowaddr">${m.sheet} row ${m.row}</td><td style="color:var(--ink-2)">${m.by}</td><td class="r score ${m.score<.75?"lo":""}">${m.score.toFixed(2)}</td><td><span class="stt ${m.score>=.75?"ok":"fl"}"><span class="dot"></span>${m.score>=.75?"Matched":"Check"}</span></td></tr>`).join("")+`</tbody></table>`;
+  $("#fillBtn").disabled=none;
+}
+$("#tplPick").onclick=()=>{if(!LINES.length){alert("This project has no takeoff lines yet.");return}$("#tplIn").click()};
+$("#tplIn").onchange=async e=>{
+  const f=e.target.files[0];if(!f)return;
+  $("#tplCard").innerHTML=`<div class="hint">Reading ${f.name}...</div>`;
+  const fd=new FormData();fd.append("template",f);fd.append("lines",JSON.stringify(linesForServer()));
+  try{
+    const r=await fetch(`/api/project/${PID}/template`,{method:"POST",body:fd}),j=await r.json();
+    if(!r.ok)throw new Error(j.error||"Could not read that file");
+    TPL=j;renderTemplate();
+  }catch(err){TPL=null;renderTemplate();$("#tplCard").innerHTML=`<div class="hint" style="color:var(--accent)">${err.message}</div>`}
+  e.target.value="";
+};
+function download(blob,name){const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download=name;document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove()},500)}
+function fileNameOf(r,fallback){const m=/filename\*?=(?:UTF-8'')?"?([^";]+)"?/i.exec(r.headers.get("Content-Disposition")||"");return m?decodeURIComponent(m[1]):fallback}
+$("#fillBtn").onclick=async()=>{
+  if(!TPL)return;const b=$("#fillBtn");b.disabled=true;b.textContent="Filling...";
+  try{
+    const r=await fetch(`/api/project/${PID}/template/${TPL.id}/fill`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lines:linesForServer()})});
+    if(!r.ok)throw new Error("The server could not fill that template");
+    const rep=JSON.parse(r.headers.get("X-Fill-Report")||"{}");
+    download(await r.blob(),fileNameOf(r,"client-template-filled.xlsx"));
+    $("#fillMsg").textContent=`Written to a copy: ${rep.cells_written} cells filled${PRICING.on?`, ${rep.rates_written} rates and ${rep.labour_written} labour rows written`:""}, ${rep.unfilled_rows} template rows left blank, ${rep.unmatched_lines} line(s) on the Unassigned sheet.`;
+  }catch(err){$("#fillMsg").textContent=err.message}
+  b.disabled=false;b.textContent="Fill template";
+};
+
+/* --- pricing screen --- */
+function renderPricing(){
+  $("#pOn").checked=PRICING.on;
+  const side=$("#pSide"),tbl=$("#pTbl");
+  if(!PRICING.on){
+    side.innerHTML=`<div class="pfield"><b>Pricing is off</b><span class="hint">This project delivers quantities only. No rate or cost columns appear, and the exported workbook has none. Switch it on if the client wants costs as well.</span></div>`;
+    tbl.innerHTML=`<div style="padding:48px 28px;color:var(--ink-2);max-width:520px">Nothing is priced. The estimator's workbook will contain quantities only.</div>`;
+    ["pM","pS","pN"].forEach(i=>$("#"+i).textContent="0");$("#pTotal").textContent="Pricing is off";$("#pHint").textContent="";return}
+  const P=PRICING.pct;
+  side.innerHTML=`<div class="pfield"><b>Price list</b>
+      <span class="hint">${PRICING.list?`${PRICING.list.name}: ${PRICING.list.entries} rates loaded.`:"CSV or Excel with the columns description, unit and rate. A category column helps matching."}</span>
+      <div style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" id="pPick">${PRICING.list?"Replace price list":"Choose price list"}</button><a class="btn" href="/pricing/example.csv" download>Example format</a></div>
+      <input type="file" id="pIn" accept=".csv,.xlsx" hidden><span class="hint" id="pErr" style="color:var(--accent)"></span></div>
+    <div class="pfield"><b>Allowances</b><div class="pgrid">
+      <label>Contingency %<input type="number" min="0" max="100" step="0.5" data-p="contingency" value="${P.contingency}"></label>
+      <label>Margin %<input type="number" min="0" max="100" step="0.5" data-p="margin" value="${P.margin}"></label>
+      <label>GST %<input type="number" min="0" max="100" step="0.5" data-p="gst" value="${P.gst}"></label>
+      <label>Currency<input type="text" maxlength="4" data-p="currency" value="${PRICING.currency}"></label></div>
+      <span class="hint">Applied in the exported Pricing summary sheet.</span></div>
+    <div class="pfield"><b>Labour</b><div class="pgrid" style="grid-template-columns:1fr 1fr">
+      <label>Default labour rate ($ per hour)<input type="number" min="0" step="0.5" data-p="labourRate" value="${PRICING.labourRate!=null?PRICING.labourRate:""}" placeholder="none"></label></div>
+      <span class="hint">Price lists can include labour_hours (per unit) and labour_rate columns. Used when an entry has hours but no rate. Hours are never costed without a rate.</span></div>
+    <div class="pfield"><b>How matching works</b><span class="hint">A line only takes a rate of the same kind of work and the same unit. Confident matches are applied. Plausible ones are suggested and wait for you to accept them. Anything else stays blank for you to price. A rate is never guessed.</span></div>`;
+  $("#pPick").onclick=()=>{if(!LINES.length){$("#pErr").textContent="This project has no takeoff lines yet.";return}$("#pIn").click()};
+  $("#pIn").onchange=e=>{const f=e.target.files[0];if(f)uploadPrices(f);e.target.value=""};
+  $$("#pSide input[data-p]").forEach(i=>i.oninput=()=>{
+    const k=i.dataset.p;if(k==="currency")PRICING.currency=(i.value||"AUD").toUpperCase();else if(k==="labourRate")PRICING.labourRate=i.value.trim()===""?null:Math.max(0,parseFloat(i.value)||0);else PRICING.pct[k]=Math.max(0,parseFloat(i.value)||0);
+    renderPricingTotals();renderSummary();scheduleSave()});
+  const ms=LINES.filter(l=>usable(l)),ss=LINES.filter(l=>l.pm&&l.pm.status==="suggested"&&!usable(l)),ns=LINES.filter(l=>!usable(l)&&!(l.pm&&l.pm.status==="suggested"));
+  $("#pM").textContent=ms.length;$("#pS").textContent=ss.length;$("#pN").textContent=ns.length;
+  $("#pHint").textContent=PRICING.list?"Check the suggested rates. Accepted and matched rates feed the Rate and Cost columns on the review screen.":"Load a price list to match rates, or type rates line by line on the review screen.";
+  const order=l=>usable(l)?2:(l.pm&&l.pm.status==="suggested")?0:1;
+  tbl.innerHTML=LINES.length?`<table><thead><tr><th>Line</th><th>Price list entry</th><th class="r">Rate</th><th>Labour</th><th class="r">Score</th><th>Status</th></tr></thead><tbody>`+
+    [...LINES].sort((a,b)=>order(a)-order(b)).map((l,i)=>{
+      const pm=l.pm||{status:"none"},u=usable(l);
+      const stt=u?`<span class="stt ok"><span class="dot"></span>${pm.status==="matched"?"Matched":pm.status==="accepted"?"Accepted":"Entered"}</span>`
+        :pm.status==="suggested"?`<button class="btn" data-acc="${l.id}" style="padding:3px 9px">Accept ${money(pm.rate)}</button>`:`<span class="stt"><span class="dot"></span>No rate</span>`;
+      return `<tr class="l mrow" style="--n:${Math.min(i,20)}"><td class="ds" title="${l.ds.replace(/"/g,"&quot;")}"><b style="font-weight:500">${l.mk}</b> <span style="color:var(--ink-3)">${l.g.toLowerCase()}</span></td><td class="ds" style="color:var(--ink-2)">${pm.entry||"&mdash;"}</td><td class="r num">${u?(l.rate!=null?fmt(l.rate):"&mdash;"):pm.status==="suggested"?`<span class="sug">${fmt(pm.rate)}?</span>`:"&mdash;"}</td><td class="num" style="color:var(--ink-2);font-size:12px">${(()=>{const hp=u?l.lhpu:(pm.status==="suggested"?pm.lhpu:null);if(hp==null)return "&mdash;";const r=u?effL(l):(pm.lrate!=null?pm.lrate:PRICING.labourRate);return hp+" h/"+l.u+(r!=null?" @ "+r:" (no rate)")})()}</td><td class="r score ${pm.score&&pm.score<.8?"lo":""}">${pm.score?pm.score.toFixed(2):""}</td><td>${stt}</td></tr>`}).join("")+`</tbody></table>`
+    :`<div style="padding:48px 28px;color:var(--ink-2)">No takeoff lines yet, so there is nothing to price.</div>`;
+  $$("#pTbl [data-acc]").forEach(b=>b.onclick=()=>{const l=LINES.find(x=>x.id===+b.dataset.acc);l.rate=l.pm.rate;l.lhpu=l.pm.lhpu!=null?l.pm.lhpu:null;l.lrate=l.pm.lrate!=null?l.pm.lrate:null;l.pm={...l.pm,status:"accepted"};renderPricing();renderAll()});
+  renderPricingTotals();
+}
+function renderPricingTotals(){
+  const t=priceTotals();
+  $("#pTotal").innerHTML=PRICING.on?`Materials <b>${money(t.mat)}</b> &middot; Labour <b>${money(t.lab)}</b> (${fmt(t.hrs,1)} hrs) &middot; excl. GST <b>${money(t.ex)}</b> &middot; incl. GST <b>${money(t.total)}</b> &middot; ${t.priced} priced, ${t.unpriced} not${t.noLabRate?`, ${t.noLabRate} with hours but no labour rate`:""}`:"Pricing is off"}
+async function uploadPrices(file){
+  const err=$("#pErr");if(err)err.textContent="Reading "+file.name+"...";
+  const fd=new FormData();fd.append("prices",file);fd.append("lines",JSON.stringify(LINES));
+  try{
+    const r=await fetch(`/api/project/${PID}/prices`,{method:"POST",body:fd}),j=await r.json();
+    if(!r.ok)throw new Error(j.error||"Could not read that price list");
+    const by=Object.fromEntries(j.matches.map(m=>[m.id,m]));
+    LINES.forEach(l=>{const m=by[l.id];if(!m)return;
+      if(l.pm&&l.pm.status==="manual")return;                     // typed rates are never overwritten
+      l.pm0={status:m.status,rate:m.rate,entry:m.entry,score:m.score,lhpu:m.lhpu,lrate:m.lrate};l.pm={...l.pm0};
+      l.rate=m.status==="matched"?m.rate:null;l.lhpu=m.status==="matched"&&m.lhpu!=null?m.lhpu:null;l.lrate=m.status==="matched"&&m.lrate!=null?m.lrate:null});
+    PRICING.list={name:j.name,entries:j.entries};
+    renderPricing();renderAll();
+  }catch(e){renderPricing();const x=$("#pErr");if(x)x.textContent=e.message}
+}
+$("#pOn").onchange=e=>{PRICING.on=e.target.checked;renderPricing();renderAll()};
+
+/* --- share with the client: an expiring download link, no account needed --- */
+function closeShare(){const p=$("#sharePanel");if(p)p.hidden=true}
+const when=ts=>new Date(ts*1000).toLocaleString([], {day:"numeric",month:"short",year:"numeric",hour:"2-digit",minute:"2-digit"});
+async function loadShares(){
+  try{
+    const list=await (await fetch(`/api/project/${PID}/shares`)).json();
+    $("#shList").innerHTML=list.length?list.map(x=>`<div class="shitem"><span><b style="font-weight:500">${x.file}</b></span><span class="shchip ${x.state==="active"?"on":""}">${x.state}</span>
+      <small>${when(x.created)}${x.by?" by "+x.by:""} &middot; ${x.count}${x.max?" of "+x.max:""} download${x.count===1?"":"s"} &middot; expires ${when(x.expires)}${x.note?" &middot; "+x.note.replace(/</g,"&lt;"):""}</small>
+      ${x.state==="active"?`<small><a href="#" data-rev="${x.id}" style="color:var(--accent)">Revoke this link</a></small>`:""}</div>`).join(""):`<div class="hint" style="padding:10px 0">No links yet for this project.</div>`;
+    $$("#shList [data-rev]").forEach(a=>a.onclick=async e=>{e.preventDefault();if(!confirm("Stop this link working now?"))return;await fetch(`/api/share/${a.dataset.rev}`,{method:"DELETE"});loadShares()});
+  }catch(e){$("#shList").innerHTML=`<div class="hint" style="color:var(--accent)">Could not load the link list.</div>`}
+}
+$("#shareBtn").onclick=e=>{e.stopPropagation();const p=$("#sharePanel");p.hidden=!p.hidden;if(!p.hidden){$("#shResult").innerHTML="";loadShares()}};
+document.addEventListener("click",e=>{const p=$("#sharePanel");if(p&&!p.hidden&&!p.contains(e.target)&&e.target.id!=="shareBtn")closeShare()});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeShare()});
+$("#shMake").onclick=async()=>{
+  const src=$("#shSrc").value,res=$("#shResult"),b=$("#shMake");
+  if(src==="template"&&!TPL){res.innerHTML=`<div class="hint" style="color:var(--accent)">Choose the client's Excel file on the Template screen first.</div>`;return}
+  b.disabled=true;b.textContent="Creating...";
+  try{
+    const r=await fetch(`/api/project/${PID}/share`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({
+      source:src,template_id:TPL&&TPL.id,lines:linesForServer(),pricing:PRICING.on?{on:true,pct:PRICING.pct,currency:PRICING.currency}:undefined,
+      hours:+$("#shHrs").value,max_downloads:+$("#shMax").value,note:$("#shNote").value})});
+    const j=await r.json();if(!r.ok)throw new Error(j.error||"Could not create the link");
+    const subj=encodeURIComponent("Takeoff for "+PROJ.name),body=encodeURIComponent(`Hi,\n\nYour takeoff workbook is ready. You can download it here:\n${j.url}\n\nThe link works until ${when(j.expires)}. Please keep it private.\n\nKind regards`);
+    res.innerHTML=`<div class="shres"><b style="font-weight:600">Link ready</b><input type="text" id="shUrl" readonly value="${j.url}" aria-label="Download link">
+      <div class="row"><button class="btn" id="shCopy">Copy link</button><a class="btn" href="mailto:?subject=${subj}&body=${body}">Email it</a></div>
+      <span class="hint">Copy it now: for security the link cannot be shown again. Works until ${when(j.expires)}.</span></div>`;
+    $("#shCopy").onclick=async()=>{const u=$("#shUrl");u.select();try{await navigator.clipboard.writeText(u.value);$("#shCopy").textContent="Copied"}catch(e){document.execCommand("copy");$("#shCopy").textContent="Copied"}};
+    $("#shUrl").select();loadShares();
+  }catch(e){res.innerHTML=`<div class="hint" style="color:var(--accent)">${e.message}</div>`}
+  b.disabled=false;b.textContent="Create link";
+};
+if(QD_USER&&QD_USER!=="local"){const lo=$("#logoutBtn");lo.hidden=false;lo.title="Sign out "+QD_USER;lo.onclick=async()=>{await fetch("/logout",{method:"POST"});location.href="/login"}}
+
+/* --- pop-out window: the same page with ?plan=1. Both windows edit one shared document over a BroadcastChannel,
+       so you can measure in the pop-out and watch the table update in the main window (and the reverse). --- */
+const IS_POP=new URLSearchParams(location.search).has("plan");
+const ME=Math.random().toString(36).slice(2);
+const BC=typeof BroadcastChannel!=="undefined"?new BroadcastChannel("qd-"+PID+(DEMO_AI?"-demo":"")):null;
+let popWin=null,popTimer=null,REMOTE=false,syncT=null;
+function buildState(){
+  return {v:2,sel:st.sel,page:V.page,meas:MEAS,
+    scales:SCALES.map(x=>({ratio:x.ratio,status:x.status,src:x.src,note:x.note})),
+    pricing:{on:PRICING.on,list:PRICING.list,pct:PRICING.pct,currency:PRICING.currency,labourRate:PRICING.labourRate},
+    lines:LINES.map(l=>({id:l.id,n:l.n,q:l.q,dm:l.dm,st:l.st,src2:l.src2,orig:l.orig,ag:l.ag==="resolved"?"resolved":undefined,rate:l.rate,lhpu:l.lhpu,lrate:l.lrate,pm:l.pm,pm0:l.pm0}))}}
+function scheduleSync(){
+  if(!BC||REMOTE||!PROJ)return;
+  clearTimeout(syncT);syncT=setTimeout(()=>BC.postMessage({type:"state",from:ME,doc:JSON.parse(JSON.stringify(buildState()))}),60)}
+function applyRemote(d){
+  REMOTE=true;
+  try{applyState(d,true);renderAll();renderScale();drawOverlays();renderTools()}finally{REMOTE=false}}
+if(BC)BC.onmessage=e=>{
+  const m=e.data;if(!m||m.from===ME||!PROJ)return;
+  if(m.type==="hello"){BC.postMessage({type:"state",from:ME,doc:JSON.parse(JSON.stringify(buildState()))})}
+  else if(m.type==="state")applyRemote(m.doc);
+  else if(m.type==="bye"&&!IS_POP)dock();
+};
+function openPop(){
+  popWin=window.open(location.pathname+"?plan=1&project="+encodeURIComponent(PID)+(DEMO_AI?"&demo_ai=1":""),"quantidawn-plan","popup=yes,width=1280,height=860");
+  if(!popWin){alert("The browser blocked the new window. Allow pop-ups for this page and try again.");return}
+  $(".left").classList.add("out");
+  clearInterval(popTimer);
+  popTimer=setInterval(()=>{if(popWin.closed){clearInterval(popTimer);dock()}},600);
+}
+function dock(){
+  if(popWin&&!popWin.closed)popWin.close();
+  popWin=null;clearInterval(popTimer);$(".left").classList.remove("out");
+  requestAnimationFrame(()=>{fitView();V.lastSel=null;applyFocus()});
+}
+function renderPopBar(){
+  if(!IS_POP||!PROJ)return;
+  const sel=$("#popLine"),l=curLine();
+  const firstOf=x=>LINES.find(y=>y.el===x.el&&x.el>=0)||x;          // one entry per measured element, not per derived line
+  if(sel&&!sel.dataset.built){
+    const seen=new Set(),opts=[];
+    LINES.forEach(x=>{const key=x.el>=0?x.el:"ai"+x.id;if(seen.has(key))return;seen.add(key);opts.push(x)});
+    sel.innerHTML=opts.map(x=>`<option value="${x.id}">${x.mk} (${MT_NAME[x.mt]||"item"})</option>`).join("");
+    sel.dataset.built="1";sel.onchange=()=>{st.sel=+sel.value;renderAll();scheduleSync()}}
+  if(sel&&l)sel.value=String(firstOf(l).id);
+  const q=$("#pbQty");if(q)q.innerHTML=l?`<b>${fmt(l.q)} ${l.u}</b> &middot; ${l.dm||""}`:"";
+  const n=$("#pbName");if(n)n.textContent=PROJ.name}
+if(IS_POP){
+  document.body.classList.add("pop");
+  $("#popDock").onclick=()=>window.close();
+  window.addEventListener("beforeunload",()=>{if(BC)BC.postMessage({type:"bye",from:ME})});
+}else{
+  $("#dock").onclick=dock;
+  window.addEventListener("beforeunload",()=>{if(popWin&&!popWin.closed)popWin.close()});
+}
+
+/* --- events --- */
+document.addEventListener("click",e=>{
+  const row=e.target.closest("tr.l");if(row){st.sel=+row.dataset.id;renderTable();renderDrawer();applyFocus();scheduleSync();return}
+  const g=e.target.closest("tr.g");if(g){const i=+g.dataset.g;st.shut.has(i)?st.shut.delete(i):st.shut.add(i);renderTable();return}
+  const c=e.target.closest(".chip");if(c){st.filter=c.dataset.f;renderChips();renderTable();return}
+  const t=e.target.closest("[data-sh]");if(t){st.sheet=+t.dataset.sh;V.flash=null;setPage(st.sheet);return}
+});
+$("#q").addEventListener("input",e=>{st.q=e.target.value;renderTable()});
+$("#qx").onclick=()=>{const q=$("#queue");q.classList.toggle("off");$("#qx").textContent=q.classList.contains("off")?"Show":"Hide"};
+$("#exportBtn").onclick=async()=>{
+  const b=$("#exportBtn"),o=b.innerHTML,n=LINES.filter(l=>l.st!=="ok").length;
+  const msg=t=>{b.innerHTML=t;setTimeout(()=>b.innerHTML=o,2200)};
+  if(!LINES.length){msg("No lines to export yet");return}
+  b.disabled=true;
+  try{
+    const r=await fetch(`/api/project/${PID}/export`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({lines:linesForServer(),pricing:PRICING.on?{on:true,pct:PRICING.pct,currency:PRICING.currency}:undefined})});
+    if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error||"Export failed")}
+    download(await r.blob(),fileNameOf(r,"takeoff.xlsx"));
+    msg(n?`Exported, ${n} marked PENDING`:"Exported");
+  }catch(e){msg(e.message)}
+  b.disabled=false;
+};
+document.addEventListener("keydown",e=>{
+  if(!TOOL.on&&SELS.el!=null&&(e.key==="Delete"||e.key==="Backspace")&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){e.preventDefault();deleteShape();return}
+  if(!TOOL.on&&SELS.el!=null&&e.key==="Escape"){SELS.el=null;SELS.idx=null;renderTools();drawOverlays();return}
+  if(TOOL.on&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){
+    if(e.key==="Escape"){cancelMeasure();return}
+    if(e.key==="Enter"){finishShape();return}
+    if(e.key==="Backspace"){e.preventDefault();TOOL.pts.pop();renderTools();drawOverlays();return}
+  }
+  if(!$("#v-review").classList.contains("on")||/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;
+  const vis=LINES.filter(l=>visible(l)&&!st.shut.has(l.g)),i=vis.findIndex(l=>l.id===st.sel);
+  if(e.key==="j"||e.key==="ArrowDown"){e.preventDefault();const n=vis[Math.min(i+1,vis.length-1)];if(n){st.sel=n.id;renderAll()}}
+  if(e.key==="k"||e.key==="ArrowUp"){e.preventDefault();const n=vis[Math.max(i-1,0)];if(n){st.sel=n.id;renderAll()}}
+  const l=LINES.find(x=>x.id===st.sel);
+  if(e.key==="v"&&l){l.st=l.st==="ok"?"pn":"ok";renderAll()}
+  if(e.key==="f"&&l){l.st=l.st==="fl"?"pn":"fl";renderAll()}
+});
+$("#qlist").innerHTML=SKIPPED.map(s=>`<li>${s}</li>`).join("");
+const drop=$("#drop");["dragenter","dragover"].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.add("over")}));
+["dragleave","drop"].forEach(t=>drop.addEventListener(t,e=>{e.preventDefault();drop.classList.remove("over");if(t==="drop")uploadPdfs(e.dataTransfer.files)}));
+$("#pickPdf").onclick=()=>$("#pdfIn").click();
+$("#pdfIn").onchange=e=>uploadPdfs(e.target.files);
+
+/* --- persistence: saved per project on the server, so it follows the project, not the browser --- */
+let saveT=null;
+const NOSAVE=DEMO_AI;
+function stamp(t){return new Date(t).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
+function scheduleSave(){if(!PROJ||REMOTE)return;scheduleSync();if(NOSAVE)return;clearTimeout(saveT);saveT=setTimeout(saveNow,400)}
+async function saveNow(){
+  const el=$("#saveLbl");
+  try{
+    const body=buildState();
+    const r=await fetch(`/api/project/${PID}/state`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    if(!r.ok)throw 0;
+    if(el)el.textContent="Saved "+stamp(Date.now());
+  }catch(e){if(el)el.textContent="Not saved (server unreachable)"}
+}
+function applyState(d,live){
+  if(!d||d.v!==2)return;
+  if(live)Object.keys(MEAS).forEach(k=>delete MEAS[k]);          // a live update replaces the shapes, it does not add to them
+  Object.keys(d.meas||{}).forEach(k=>MEAS[k]=d.meas[k]);
+  (d.scales||[]).forEach((x,i)=>{if(SCALES[i])Object.assign(SCALES[i],x)});
+  (d.lines||[]).forEach(x=>{const l=LINES.find(y=>y.id===x.id);if(l){l.n=x.n;l.q=x.q;l.dm=x.dm;l.st=x.st;l.src2=x.src2;if(x.ag==="resolved"){l.ag="resolved";l.agr=""}if(x.orig)l.orig=x.orig;if(x.pm){l.pm=x.pm;l.pm0=x.pm0;l.rate=x.rate==null?null:x.rate;l.lhpu=x.lhpu==null?null:x.lhpu;l.lrate=x.lrate==null?null:x.lrate}}});
+  if(d.pricing){PRICING.on=!!d.pricing.on;PRICING.list=d.pricing.list||null;Object.assign(PRICING.pct,d.pricing.pct||{});PRICING.currency=d.pricing.currency||"AUD";PRICING.labourRate=d.pricing.labourRate==null?null:d.pricing.labourRate}
+  if(d.sel&&LINES.some(l=>l.id===d.sel))st.sel=d.sel;
+  if(live)return;
+  if(Number.isInteger(d.page)&&SHEETS[d.page])V.page=d.page;
+  const el=$("#saveLbl");if(el)el.textContent="Restored "+stamp(d.saved*1000);
+}
+$("#resetBtn").onclick=async()=>{if(confirm("Clear all saved measurements, scale confirmations and edits for this project?")){try{await fetch(`/api/project/${PID}/state`,{method:"DELETE"})}catch(e){}location.href="?project="+PID}};
+$("#demoBtn").onclick=()=>{location.href="?project="+PID+(DEMO_AI?"":"&demo_ai=1")};
+async function boot(){
+  let empty=false;
+  if(!QS.get("project")){      // no project chosen: open the first one, or the upload screen when there are none (a fresh hosted install)
+    try{const pr=await (await fetch("/api/projects")).json();
+      if(!pr.length)empty=true;else if(!pr.some(p=>p.id===PID))PID=pr[0].id}catch(e){}
+  }
+  try{
+    if(empty){PROJ={id:"",name:"No project yet",engineer:"",rev:"",status:"",groups:[],lines:[],skipped:[],state:null,
+      pages:[{n:"",t:"",w:842,h:595,c:0,img:"",max_z:2,scale:{ratio:null,status:"unknown",src:"",note:""}}]}}
+    else{
+      const r=await fetch(`/api/project/${PID}${DEMO_AI?"?demo_ai=1":""}`);
+      if(!r.ok)throw 0;
+      PROJ=await r.json();
+    }
+  }catch(e){
+    document.body.innerHTML='<div style="font:15px/1.5 Geist,system-ui,sans-serif;max-width:560px;margin:15vh auto;padding:0 24px"><h2 style="margin-bottom:8px">Cannot reach the estimator server</h2><p>Start it from the project folder, then open <b>http://127.0.0.1:5050</b>:</p><pre style="background:#f4f4f5;padding:12px;border-radius:8px;margin-top:10px">./.venv/bin/python server.py</pre></div>';
+    return}
+  GROUPS=PROJ.groups;LINES=PROJ.lines;SKIPPED=PROJ.skipped;
+  SHEETS=PROJ.pages.map(p=>({n:p.n,t:p.t,c:p.c||0}));
+  SCALES=PROJ.pages.map(p=>({...p.scale}));
+  LINES.forEach(l=>{l.src2=null;l.dm=dmOf(l)});
+  st.sel=LINES.length?LINES[0].id:null;
+  if(!DEMO_AI)applyState(PROJ.state);
+  $("#ptitle").textContent=PROJ.name;$("#metaE").textContent=PROJ.engineer||"";$("#metaR").textContent=PROJ.rev?"Rev "+PROJ.rev:"";$("#metaS").textContent=PROJ.status||"";
+  $("#qlist").innerHTML=SKIPPED.map(x=>`<li>${x}</li>`).join("");
+  $("#queue h4 span").textContent=`Not taken off, ${SKIPPED.length} item${SKIPPED.length===1?"":"s"}`;
+  $("#queue").style.display=SKIPPED.length?"":"none";$("#queue").classList.add("off");$("#qx").textContent="Show";
+  $("#demoBtn").textContent=DEMO_AI?"Hide demo AI check":"Demo AI check";
+  if(DEMO_AI){const el=$("#saveLbl");if(el)el.textContent="Demo AI data, not saved"}
+  try{const pr=await (await fetch("/api/projects")).json();
+    $("#recent").innerHTML=pr.map(p=>`<a href="?project=${p.id}" style="${p.id===PID?"font-weight:600":""}">${p.name} <span class="num">${p.note}</span></a>`).join("")}catch(e){}
+  if(empty)go("upload");else if(!LINES.length)go("review");
+  renderAll();
+  if(IS_POP&&BC)BC.postMessage({type:"hello",from:ME});
+}
+if(IS_POP){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on',e.id==='v-review'))}
+
+
+/* --- first-use tour: points at the real buttons; opens once, then from the ? button --- */
+(()=>{
+  const STEPS=[
+    {t:"Welcome",b:"A quick tour of the buttons. Rules measure first, AI cross-checks, and you verify last. It takes under a minute."},
+    {view:"upload",sel:"#pickPdf",t:"Upload plans",b:"Choose one or more plan PDFs. Each page is read and its scale is detected from the title block."},
+    {sel:'[data-go="upload"]',t:"Projects",b:"Switch between projects, or start a new one by uploading plans."},
+    {view:"review",sel:'[data-go="review"]',t:"Takeoff",b:"The working screen: your lines on the left, the plan on the right. Pick a line, then draw it on the plan."},
+    {sel:"#scEnt",t:"Scale",b:"Each sheet's scale must be confirmed before you can measure. Confirm the detected scale, or type your own."},
+    {sel:"#popBtn",t:"Pop out",b:"Opens the plan in its own window for a second screen. Both windows stay in sync."},
+    {sel:'[data-go="pricing"]',t:"Pricing (optional)",b:"Only when the client wants costs: load a price list and rates are matched to lines. Off by default."},
+    {sel:"#shareBtn",t:"Share link",b:"Creates a private download link for the client, with an expiry. They need no account."},
+    {sel:"#exportBtn",t:"Export workbook",b:"Downloads the takeoff with live formulas. To use a client's own Excel instead, use Fill template."},
+    {sel:"#helpBtn",t:"Need this again?",b:"Press this ? button any time to replay the tour."}
+  ];
+  const root=document.getElementById("tour");if(!root)return;
+  const spot=root.querySelector(".spot"),tip=root.querySelector(".tip"),q=s=>tip.querySelector(s);
+  let list=[],i=0;
+  const vis=e=>e&&e.getClientRects().length>0;
+  const seen=()=>{try{localStorage.setItem("qd-guide-seen","1")}catch(e){}};
+  function show(){
+    const st=list[i];if(st.view&&typeof go==="function")go(st.view);
+    const el=st.sel?document.querySelector(st.sel):null,has=vis(el);
+    q(".tk").textContent=`${i+1} of ${list.length}`;q("h3").textContent=st.t;q("p").textContent=st.b;
+    q("[data-tback]").style.visibility=i?"visible":"hidden";q("[data-tnext]").textContent=i===list.length-1?"Done":"Next";
+    q(".tskip").style.display=i===list.length-1?"none":"";
+    const W=innerWidth,H=innerHeight,tw=tip.offsetWidth,th=tip.offsetHeight;
+    if(has){const r=el.getBoundingClientRect(),pad=5;
+      Object.assign(spot.style,{display:"block",left:r.left-pad+"px",top:r.top-pad+"px",width:r.width+pad*2+"px",height:r.height+pad*2+"px"});
+      let x=r.right+16,y=r.top+r.height/2-th/2;                       // to the right of the button (rail), else below it
+      if(x+tw>W-12){x=Math.min(Math.max(12,r.right-tw),W-tw-12);y=r.bottom+14;if(y+th>H-12)y=Math.max(12,r.top-th-14)}
+      tip.style.left=Math.max(12,x)+"px";tip.style.top=Math.min(Math.max(12,y),H-th-12)+"px";
+    }else{spot.style.display="none";tip.style.left=(W-tw)/2+"px";tip.style.top=(H-th)/2+"px"}
+  }
+  function start(){
+    list=STEPS.filter(s=>true);i=0;root.classList.add("on");
+    // keep steps whose button exists on its screen; welcome and the final ? step always stay
+    const keep=[];for(const s of STEPS){if(!s.sel){keep.push(s);continue}if(s.view&&typeof go==="function")go(s.view);if(vis(document.querySelector(s.sel)))keep.push(s)}
+    list=keep;i=0;show();
+  }
+  function end(){seen();root.classList.remove("on");if(typeof go==="function")go(PROJ&&PROJ.id?"review":"upload")}
+  tip.querySelector("[data-tnext]").onclick=()=>{if(i===list.length-1)end();else{i++;show()}};
+  tip.querySelector("[data-tback]").onclick=()=>{if(i){i--;show()}};
+  tip.querySelector(".tskip").onclick=end;
+  addEventListener("keydown",e=>{if(!root.classList.contains("on"))return;if(e.key==="Escape")end();if(e.key==="ArrowRight")tip.querySelector("[data-tnext]").click();if(e.key==="ArrowLeft")tip.querySelector("[data-tback]").click()});
+  addEventListener("resize",()=>{if(root.classList.contains("on"))show()});
+  const hb=document.getElementById("helpBtn");if(hb)hb.onclick=start;
+  window.qdTour=start;
+  if(!IS_POP){let done=false;try{done=localStorage.getItem("qd-guide-seen")==="1"}catch(e){}if(!done)setTimeout(start,900)}
+})();
+boot();
+</script>
+</body>
+</html>
