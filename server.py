@@ -23,7 +23,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 
 from core import auth, shares
-from core import logic_reader, reader
+from core import logic_reader, markup_pdf, reader
 from core.price_matcher import load_price_list, price_lines
 from core.project import DATA, ROOT, SAMPLES, _scale_json, apply_entries, demo_ai, from_json, native_z, render_pages, sample_project
 from core.render import render_crop
@@ -422,6 +422,39 @@ def export(pid):
     body = request.get_json(force=True, silent=True) or {}
     return send_file(io.BytesIO(export_bytes(p, lines, body.get("pricing"))), as_attachment=True,
                      download_name=f"{secure_filename(p['name']) or pid}-takeoff.xlsx", mimetype=XLSX)
+
+
+def markup_key(pid):
+    return f"markup/{pid}/marked-up.pdf"
+
+
+@app.post("/api/project/<pid>/markup-pdf")
+def markup_pdf_export(pid):
+    """Draw the measured shapes onto the sheets and store the PDF. The file is big (it is the whole drawing set), so the
+    browser gets a link to fetch it from, the same way page images are served, instead of the bytes in this response."""
+    p = load_project(pid)
+    body = request.get_json(force=True, silent=True) or {}
+    shapes = markup_pdf.clean_shapes(body.get("shapes"))
+    if not shapes:
+        return jsonify(error="There are no measured shapes to put on the drawing yet."), 400
+    sources = [page_source(pid, n) for n in range(1, len(p["pages"]) + 1)]
+    data = markup_pdf.build(sources, shapes, f"{p['name']}: measured in QuantiDawn Estimator, {time.strftime('%d %b %Y')}")
+    get_store().put(markup_key(pid), data, "application/pdf")
+    return jsonify(url=f"/api/project/{pid}/markup-pdf?v={int(time.time())}", name=f"{secure_filename(p['name']) or pid}-marked-up.pdf")
+
+
+@app.get("/api/project/<pid>/markup-pdf")
+def markup_pdf_file(pid):
+    p = load_project(pid)
+    name = f"{secure_filename(p['name']) or pid}-marked-up.pdf"
+    st = get_store()
+    url = st.url(markup_key(pid), 600)
+    if url:
+        return redirect(url + "&download=" + name, 302)
+    f = st.local_path(markup_key(pid))
+    if not f:
+        abort(404)
+    return send_file(f, as_attachment=True, download_name=name, mimetype="application/pdf")
 
 
 @app.get("/pricing/example.csv")

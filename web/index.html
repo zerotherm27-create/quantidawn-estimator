@@ -438,6 +438,7 @@ body.pop .popnote{display:none}
       <button class="btn" id="readBtn" title="Read the markups with the app's own logic: embedded legend text and annotations, then colour measuring" hidden>Read markups</button>
       <button class="btn" id="aiBtn" title="Ask the AI to read the legend as a second opinion" hidden>AI check</button>
       <button class="btn" id="shareBtn" title="Create a private download link for the client">Share link</button>
+      <button class="btn" id="pdfBtn" title="Download the sheets with your measured shapes drawn on them">Marked-up PDF</button>
       <button class="btn primary" id="exportBtn"><svg class="i" viewBox="0 0 16 16"><path d="M8 2v8m0 0L5 7m3 3l3-3M3 13h10"/></svg>Export workbook</button>
     </header>
 
@@ -731,7 +732,7 @@ function go(v){
   $$(".view").forEach(e=>e.classList.toggle("on",e.id==="v-"+v));
   $$(".seg button").forEach(b=>b.classList.toggle("on",b.dataset.go===v));
   $$(".rail button[data-go]").forEach(b=>b.classList.toggle("on",b.dataset.go===v||(v==="processing"&&b.dataset.go==="review")));
-    $("#exportBtn").style.visibility=(v==="review")?"visible":"hidden";
+    $("#exportBtn").style.visibility=$("#pdfBtn").style.visibility=(v==="review")?"visible":"hidden";
   $("#shareBtn").style.display=(v==="review"||v==="template")?"":"none";
   if(v!=="review"&&v!=="template")closeShare();
   $("#demoBtn").style.display=$("#resetBtn").style.display=(v==="review"||v==="template"||v==="pricing")?"":"none";
@@ -1313,6 +1314,22 @@ $("#exportBtn").onclick=async()=>{
     if(!r.ok){const j=await r.json().catch(()=>({}));throw new Error(j.error||"Export failed")}
     download(await r.blob(),fileNameOf(r,"takeoff.xlsx"));
     msg(n?`Exported, ${n} marked PENDING`:"Exported");
+  }catch(e){msg(e.message)}
+  b.disabled=false;
+};
+$("#pdfBtn").onclick=async()=>{
+  const b=$("#pdfBtn"),o=b.textContent,msg=t=>{b.textContent=t;setTimeout(()=>b.textContent=o,2200)};
+  const shapes=[];
+  Object.entries(MEAS).forEach(([id,list])=>{const l=LINES.find(x=>x.el===+id);
+    list.forEach(sh=>{const v=shapeValue(sh),u=sh.kind==="len"?" m":sh.kind==="area"?" m2":"";
+      shapes.push({page:sh.page,kind:sh.kind,pts:sh.pts,label:l?l.mk:"",text:sh.kind==="count"?"":v.toFixed(2)+u})})});
+  if(!shapes.length){msg("Measure something first");return}
+  b.disabled=true;b.textContent="Building...";
+  try{
+    const r=await fetch(`/api/project/${PID}/markup-pdf`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({shapes})});
+    const j=await r.json().catch(()=>({}));
+    if(!r.ok)throw new Error(j.error||"Could not build the PDF");
+    const a=document.createElement("a");a.href=j.url;a.download=j.name||"marked-up.pdf";document.body.appendChild(a);a.click();a.remove();msg("Downloaded");
   }catch(e){msg(e.message)}
   b.disabled=false;
 };

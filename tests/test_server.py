@@ -38,3 +38,11 @@ if r.status_code == 200:
     up = c.get(f"/api/project/{r.json['id']}").json
     print("uploaded:", len(up["pages"]), "pages, paper", {x["paper"] for x in up["pages"]}, "scale", up["pages"][0]["scale"]["status"], "lines", len(up["lines"]))
     print("export with no lines:", c.post(f"/api/project/{r.json['id']}/export", json={"lines": []}).status_code)
+
+# marked-up PDF: measured shapes drawn onto the sheets; the response is a link, because the file is the whole drawing set
+import fitz
+shape = {"kind": "area", "page": 0, "pts": [[100, 100], [300, 100], [300, 250]], "label": "PF1", "text": "9.00 m2"}
+r = c.post("/api/project/boxshall/markup-pdf", json={"shapes": [shape, {"kind": "nope"}]})
+f = c.get(r.json["url"])
+print("markup pdf:", r.status_code, r.json["name"], "| file", f.status_code, f.mimetype, "pages", len(fitz.open(stream=f.data, filetype="pdf")),
+      "| no shapes:", c.post("/api/project/boxshall/markup-pdf", json={"shapes": []}).status_code)
