@@ -391,7 +391,7 @@ body.pop .popnote{display:none}
 :root[data-theme="dark"] .droplogo img.lg-light{display:none}
 :root[data-theme="dark"] .droplogo img.lg-dark{display:block}
 @media (prefers-color-scheme:dark){:root:not([data-theme="light"]) .droplogo img.lg-light{display:none}:root:not([data-theme="light"]) .droplogo img.lg-dark{display:block}}
-@media (max-width:760px){.droplogo{top:20px;left:24px}}
+@media (max-width:760px){.droplogo{position:static;margin-bottom:28px}.drop{justify-content:flex-start;min-height:0}.drop h1{font-size:28px;max-width:none}}
 
 
 /* ---------- first-use tour: explains the real buttons, reopened with the ? button ---------- */
