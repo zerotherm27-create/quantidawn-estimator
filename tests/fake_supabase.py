@@ -136,6 +136,16 @@ def make_server():
                 if t.startswith("gtok-"):
                     return self._send(200, {"email": t[5:], "id": "00000000-0000-0000-0000-" + ("%012d" % (len(t[5:]))), "email_confirmed_at": "2026-01-01T00:00:00Z"})
                 return self._send(401, {"msg": "bad jwt"})
+            if p == "/auth/v1/recover" and m == "POST":
+                st.recover = getattr(st, "recover", []) + [self._json().get("email")]
+                return self._send(200, {})
+            if p == "/auth/v1/user" and m == "PUT":
+                t = (self.headers.get("Authorization") or "")[7:]
+                st.passwords = getattr(st, "passwords", {}) | {t[5:]: self._json().get("password")}
+                return self._send(200, {"email": t[5:]})
+            if p == "/rest/v1/admins" and "email=" in self.path:
+                em = parse_qs(urlparse(self.path).query).get("email", [""])[0].replace("eq.", "")
+                return self._send(200, [{"user_id": "x"}] if em == "boss@example.com" else [])
             if p == "/rest/v1/admins":                  # the website's admins table: one admin whose email is boss@example.com
                 uid = (parse_qs(urlparse(self.path).query).get("user_id") or [""])[0].replace("eq.", "")
                 return self._send(200, [{"user_id": uid}] if uid.endswith("%012d" % len("boss@example.com")) else [])

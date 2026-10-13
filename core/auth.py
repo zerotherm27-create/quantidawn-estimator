@@ -131,6 +131,48 @@ def verify_access_token(token):
     return email if _is_member(u.get("id"), email) else None
 
 
+def _is_member_email(email):
+    from core.store import get_store
+    from urllib.parse import quote
+    st = get_store()
+    if st.doc_get("team", _team_id(email)) is not None:
+        return True
+    if st.kind == "supabase":
+        try:
+            return bool(st._r("GET", f"/rest/v1/admins?email=eq.{quote(email, safe='')}&select=user_id").json())
+        except Exception:
+            return False
+    return False
+
+
+def request_reset(email, redirect_to):
+    """Send Supabase's password-reset email, but only to team members: the project is shared with the website, so this
+    app must not become a way to mail reset links to the website's customers. Callers show the same message either way."""
+    email = (email or "").strip().lower()
+    if not supabase_auth() or not re.match(r"^[^@\s]+@[^@\s]+\.[^@\s]+$", email) or not _is_member_email(email):
+        return False
+    r = _auth_call("POST", "/auth/v1/recover?redirect_to=" + __import__("urllib.parse").parse.quote(redirect_to, safe=""),
+                   json={"email": email}, headers={"apikey": os.environ["SUPABASE_ANON_KEY"]})
+    return bool(r is not None and r.status_code == 200)
+
+
+def set_password(access_token, new_password):
+    """Finish a reset: the browser holds the one-time recovery token from the email link. Returns (ok, message)."""
+    if len(new_password or "") < MIN_PASSWORD:
+        return False, f"Use a password of at least {MIN_PASSWORD} characters."
+    if not verify_access_token(access_token):
+        return False, "This reset link is not valid for this app, or has expired. Request a new one."
+    r = _auth_call("PUT", "/auth/v1/user", json={"password": new_password},
+                   headers={"apikey": os.environ["SUPABASE_ANON_KEY"], "Authorization": f"Bearer {access_token}"})
+    if r is not None and r.status_code == 200:
+        return True, ""
+    try:
+        msg = (r.json().get("msg") or r.json().get("message") or "") if r is not None else ""
+    except ValueError:
+        msg = ""
+    return False, msg[:200] or "The password could not be changed. Request a new reset link."
+
+
 def verify(name, password):
     """True only for a known user with the right password. Takes similar time either way."""
     if supabase_auth():

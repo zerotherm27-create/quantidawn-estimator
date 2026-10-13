@@ -46,6 +46,25 @@ auth.team_add("friend@gmail.com")
 tk = __import__("re").search(r"'X-Login-Token':'([^']+)'", c3.get("/auth/callback").get_data(as_text=True)).group(1)
 check(c3.post("/auth/session", json={"access_token": "gtok-friend@gmail.com"}, headers={"X-Login-Token": tk}).status_code == 200, "team-list member signs in with Google")
 
+# forgot password / reset
+c4 = server.app.test_client()
+page_ = c4.get("/forgot").get_data(as_text=True)
+fc = re.search(r'name="csrf" value="([^"]+)"', page_).group(1)
+check(c4.get("/reset").status_code == 200 and c4.get("/login").get_data(as_text=True).count("/forgot") == 1, "forgot and reset pages load, login links to forgot")
+r = c4.post("/forgot", data={"email": "stranger@gmail.com", "csrf": fc})
+check("reset link is on its way" in r.get_data(as_text=True) and not getattr(stub, "recover", []), "non-member gets the same message but no email is sent")
+r = c4.post("/forgot", data={"email": "boss@example.com", "csrf": fc})
+check("reset link is on its way" in r.get_data(as_text=True) and stub.recover == ["boss@example.com"], "website admin gets a reset email")
+c4.post("/forgot", data={"email": "friend@gmail.com", "csrf": fc})
+check(stub.recover[-1] == "friend@gmail.com", "team-list member gets a reset email")
+check("/auth/callback" in c4.get("/auth/callback").get_data(as_text=True) and "/reset" in c4.get("/auth/callback").get_data(as_text=True), "callback sends recovery links on to /reset")
+tk4 = re.search(r'window|"X-Login-Token":"([^"]+)"', c4.get("/reset").get_data(as_text=True)).group(1)
+sub = lambda tok, pw, h=None: c4.post("/reset/submit", json={"access_token": tok, "password": pw}, headers={"X-Login-Token": h or tk4})
+check(sub("gtok-boss@example.com", "short").status_code == 400, "short password refused")
+check(sub("gtok-stranger@gmail.com", "a-long-new-password").status_code == 400, "recovery token of a non-member refused")
+check(sub("gtok-boss@example.com", "a-long-new-password", "wrong").status_code == 403, "reset without the page token refused")
+check(sub("gtok-boss@example.com", "a-long-new-password").status_code == 200 and stub.passwords["boss@example.com"] == "a-long-new-password", "member sets a new password")
+
 # direct upload: init -> PUT to the signed link -> finalize
 doc = fitz.open(); doc.new_page(width=842, height=595).insert_text((50, 50), "SCALE 1:100 @A3"); doc.new_page(); pdf = doc.tobytes()
 init = c.post("/api/uploads/init", json={"names": ["Plans One.pdf"]}, headers=H).json
