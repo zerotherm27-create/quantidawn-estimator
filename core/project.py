@@ -105,6 +105,87 @@ def sample_project(pid):
             "skipped": [f"{d}: {why}" for d, why in skipped], "ai": "not run"}
 
 
+def _flatten(doc):
+    flat, page_of = [], []
+    for n in sorted((doc or {}).get("pages", {}), key=int):
+        for e in doc["pages"][n].get("entries", []):
+            flat.append(e)
+            page_of.append(int(n))
+    return flat, page_of
+
+
+def merge_reconcile(lines_json, logic, ai):
+    """Compare the logic lines with an independent set and mark each line agreed / disputed / silent; add lines only the AI found."""
+    rows = reconcile(logic, ai)
+    byk = {(r.line.group, r.line.description, r.line.mark): r for r in rows}
+    nid = max((l["id"] for l in lines_json), default=0)
+    for l in lines_json[:len(logic)]:
+        r = byk.get((l["g"], l["ds"], logic[l["id"] - 1].mark))
+        if r:
+            l["ag"], l["aiq"], l["agr"] = r.status, (round(r.ai_qty, 2) if r.ai_qty is not None else None), r.reason
+    for r in rows:
+        if r.status == "ai_only":
+            nid += 1
+            ln = line_json(nid, r.line, 1, None, None)
+            ln.update(ag="ai_only", aiq=round(r.ai_qty, 2), agr=r.reason, st="pn", el=-2, mt="area")
+            lines_json.append(ln)
+
+
+def apply_entries(proj, doc, ai_doc=None, labels=None):
+    """Build an uploaded project's lines from what logic read: legend rows (text or annotations) through the same rules
+    as the samples, plus colour-measured groups. An AI reading is only a cross-check, unless logic found no legend at all."""
+    labels = labels or {}
+    flat, page_of = _flatten(doc)
+    measures = [(int(n), m) for n in sorted((doc or {}).get("pages", {}), key=int) for m in doc["pages"][n].get("measures", [])]
+    ai_flat, _ = _flatten(ai_doc)
+    ai_primary = bool(ai_flat) and not flat
+    if ai_primary:
+        flat, page_of = _flatten(ai_doc)
+    if not flat and not measures:
+        return proj
+    # two workbook conventions exist (see PROFILES): use the one whose rules understand more of this legend, the project's own on a tie
+    name, lines, skipped = proj["profile"], [], []
+    if flat:
+        best = None
+        for nm in [proj["profile"]] + [k for k in PROFILES if k != proj["profile"]]:
+            l_, s_ = build_takeoff(flat, PROFILES[nm])
+            if best is None or len(s_) < len(best[2]):
+                best = (nm, l_, s_)
+        name, lines, skipped = best
+    profile = PROFILES[name]
+    out, counts = [], {}
+    for i, l in enumerate(lines, 1):
+        sheet = page_of[l.element]
+        counts[sheet] = counts.get(sheet, 0) + 1
+        out.append(line_json(i, l, sheet, None, profile))
+    if ai_doc and ai_flat and not ai_primary and lines:
+        ai_lines, _ = build_takeoff(ai_flat, profile)
+        merge_reconcile(out, lines, ai_lines)
+    for j, (n, m) in enumerate(measures):
+        key = f"{n}{m['key']}"
+        label = labels.get(key)
+        ds = label or f"{m['name']} markup, sheet {n} ({m['kind']})"
+        area = m["kind"] == "area"
+        t = TakeoffLine("MARKUPS TO IDENTIFY", (label or m["name"]).upper()[:24], ds, m["unit"],
+                        area=m["quantity"] if area else None, length=None if area else m["quantity"],
+                        kind="markup_area" if area else "markup_len", element=1000 + j, calc="plan" if area else "len")
+        lj = line_json(len(out) + 1, t, n, None, profile)
+        lj.update(lk=key, hex=m["hex"])
+        out.append(lj)
+        counts[n] = counts.get(n, 0) + 1
+    p = copy.deepcopy(proj)
+    for i, pg in enumerate(p["pages"], 1):
+        pg["c"] = counts.get(i, 0)
+    groups = [g for g in group_order(profile) if any(x["g"] == g for x in out)] if lines else []
+    if measures:
+        groups.append("MARKUPS TO IDENTIFY")
+    ai_note = ("AI reading used for the legend (no embedded text found); " if ai_primary else
+               ("AI cross-check run" if ai_doc and ai_flat else "not run"))
+    p.update(profile=name, lines=out, skipped=[f"{d}: {why}" for d, why in skipped], message="", groups=groups or group_order(profile),
+             ai=ai_note)
+    return p
+
+
 def from_json(lj):
     """Rebuild a TakeoffLine from the UI's JSON so export and template fill use the edited numbers."""
     n, u = lj["n"], lj["u"]
@@ -155,18 +236,6 @@ def demo_ai(project):
     ai.append(TakeoffLine("BLINDING" if project["profile"] == "boxshall" else logic[0].group, "RAFT",
                           "RAFT FOOTING CONCRETE BLINDING-300mm THICK", "m3", area=65.8, height=0.3, volume=19.74,
                           kind="raft_footing", element=-2, calc="prism"))
-    rows = reconcile(logic, ai)
-    byk = {(r.line.group, r.line.description, r.line.mark): r for r in rows}
-    nid = max(l["id"] for l in lines)
-    for l in lines:
-        r = byk.get((l["g"], l["ds"], logic[l["id"] - 1].mark))
-        if r:
-            l["ag"], l["aiq"], l["agr"] = r.status, (round(r.ai_qty, 2) if r.ai_qty is not None else None), r.reason
-    for r in rows:
-        if r.status == "ai_only":
-            nid += 1
-            ln = line_json(nid, r.line, 1, None, None)
-            ln.update(ag="ai_only", aiq=round(r.ai_qty, 2), agr=r.reason, st="pn", el=-2, mt="area")
-            lines.append(ln)
+    merge_reconcile(lines, logic, ai)
     project["ai"] = "DEMO: planted disagreements, not a real AI run"
     return project

@@ -435,6 +435,8 @@ body.pop .popnote{display:none}
       </div>
       <button class="btn" id="demoBtn" title="Show planted AI disagreements so the cross-check can be seen">Demo AI check</button>
       <button class="btn" id="resetBtn" title="Clear saved measurements">Reset</button>
+      <button class="btn" id="readBtn" title="Read the markups with the app's own logic: embedded legend text and annotations, then colour measuring" hidden>Read markups</button>
+      <button class="btn" id="aiBtn" title="Ask the AI to read the legend as a second opinion" hidden>AI check</button>
       <button class="btn" id="shareBtn" title="Create a private download link for the client">Share link</button>
       <button class="btn primary" id="exportBtn"><svg class="i" viewBox="0 0 16 16"><path d="M8 2v8m0 0L5 7m3 3l3-3M3 13h10"/></svg>Export workbook</button>
     </header>
@@ -823,11 +825,11 @@ function renderTable(){
     h+=`<tr class="g ${shut?"shut":""}" data-g="${gi}" style="top:30px"><td colspan="4"><svg class="i chev" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg>${g.toUpperCase()} <span style="color:var(--ink-3);font-weight:400;margin-left:6px">${rows.length} lines</span></td>${PRICING.on?`<td class="tot r">${anyc?money(gc):""}</td><td colspan="2"></td>`:`<td class="tot r">${tot==null?"":fmt(tot,1)+" "+units[0]}</td>`}</tr>`;
     if(!shut)rows.forEach(l=>{
       const [lab,cls]=STT[l.st];
-      h+=`<tr class="l ${l.id===st.sel?"sel":""}" data-id="${l.id}" style="--n:${n++}"><td class="mk" title="${l.mk}">${l.mk}</td><td class="ds" title="${l.ds.replace(/"/g,"&quot;")}">${l.ds}</td><td class="r num">${fmt(l.q)} <span class="u">${l.u}</span></td>${PRICING.on?`<td class="r num">${rateCell(l)}</td><td class="r num" title="${costOf(l)==null?"":`Materials ${matCost(l)==null?"none":money(matCost(l))}. Labour ${labHours(l)==null?"none":fmt(labHours(l),1)+" hrs"+(labCost(l)==null?", no labour rate":" = "+money(labCost(l)))}`}">${costOf(l)==null?`<span style="color:var(--ink-3)">&mdash;</span>`:fmt(costOf(l))}</td>`:`<td class="dm num hide-s">${l.dm}</td>`}<td>${agCell(l)}</td><td><span class="stt ${cls}"><span class="dot"></span>${lab}</span></td></tr>`;
+      h+=`<tr class="l ${l.id===st.sel?"sel":""}" data-id="${l.id}" style="--n:${n++}"><td class="mk" title="${esc(l.mk)}">${esc(l.mk)}</td><td class="ds" ${l.lk?`data-lk="${esc(l.lk)}" title="Double-click to name this markup"`:`title="${esc(l.ds)}"`}>${l.hex?`<i style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:${esc(l.hex)}"></i>`:""}${esc(l.ds)}</td><td class="r num">${fmt(l.q)} <span class="u">${l.u}</span></td>${PRICING.on?`<td class="r num">${rateCell(l)}</td><td class="r num" title="${costOf(l)==null?"":`Materials ${matCost(l)==null?"none":money(matCost(l))}. Labour ${labHours(l)==null?"none":fmt(labHours(l),1)+" hrs"+(labCost(l)==null?", no labour rate":" = "+money(labCost(l)))}`}">${costOf(l)==null?`<span style="color:var(--ink-3)">&mdash;</span>`:fmt(costOf(l))}</td>`:`<td class="dm num hide-s">${l.dm}</td>`}<td>${agCell(l)}</td><td><span class="stt ${cls}"><span class="dot"></span>${lab}</span></td></tr>`;
     });
   });
   if(n===0)h+=LINES.length===0
-    ?`<tr><td colspan="7" style="height:220px;text-align:center;color:var(--ink-2);white-space:normal;padding:0 40px">${PROJ&&PROJ.message?PROJ.message:"No takeoff lines yet."}<br><span style="color:var(--ink-3)">The sheets are loaded on the left. Set each sheet's scale to get ready to measure.</span></td></tr>`
+    ?`<tr><td colspan="7" style="height:220px;text-align:center;color:var(--ink-2);white-space:normal;padding:0 40px">${PROJ&&PROJ.message?PROJ.message:"No takeoff lines yet."}<br><span style="color:var(--ink-3)">The sheets are loaded on the left. Set each sheet's scale to get ready to measure.</span>${PROJ&&!PROJ.sample&&PROJ.id?`<br><button class="btn primary" style="margin-top:14px" data-read>Read markups</button><div class="note" id="readMsg" style="margin-top:8px;max-width:520px"></div>`:""}</td></tr>`
     :`<tr><td colspan="7" style="height:160px;text-align:center;color:var(--ink-3)">No lines match this filter. <button class="btn" style="margin-left:8px" id="clr">Clear filters</button></td></tr>`;
   $("#tbl").innerHTML=h+"</tbody></table>";
   const c=$("#clr");if(c)c.onclick=()=>{st.filter="all";st.q="";$("#q").value="";renderAll()};
@@ -864,7 +866,7 @@ function costInfo(l){
 function renderDrawer(){
   const l=LINES.find(x=>x.id===st.sel);if(!l){$("#drawer").innerHTML="";return}
   $("#drawer").innerHTML=`
-   <div><h3>${l.mk}, ${l.ds}</h3>
+   <div><h3>${esc(l.mk)}, ${esc(l.ds)}</h3>
      <div class="basis">basis <b>${l.basis}</b><br>result <b>${fmt(l.q)} ${l.u}</b> &middot; ${MEAS[l.el]&&MEAS[l.el].length?`<b>measured on plan</b> (${MEAS[l.el].length} shape${MEAS[l.el].length>1?"s":""})<a class="mlink" id="clrM">clear</a>`:(l.el<0?"added by the AI":"from sheet "+SHEETS[l.sheet-1].n+" legend")}</div></div>
    <div class="fld">
      ${[["Length","L"],["Width","W"],["Height","H"],["Area","A"],["Count","N"],["kg/m2","K"]].filter(([t,k])=>l.n[k]!=null&&!(k==="N"&&l.mt!=="count"&&l.n.N===1)).map(([t,k])=>`<label>${t}<input class="num" data-k="${k}" value="${l.n[k]}" inputmode="decimal"></label>`).join("")}
@@ -1175,7 +1177,7 @@ function renderPricing(){
       const pm=l.pm||{status:"none"},u=usable(l);
       const stt=u?`<span class="stt ok"><span class="dot"></span>${pm.status==="matched"?"Matched":pm.status==="accepted"?"Accepted":"Entered"}</span>`
         :pm.status==="suggested"?`<button class="btn" data-acc="${l.id}" style="padding:3px 9px">Accept ${money(pm.rate)}</button>`:`<span class="stt"><span class="dot"></span>No rate</span>`;
-      return `<tr class="l mrow" style="--n:${Math.min(i,20)}"><td class="ds" title="${l.ds.replace(/"/g,"&quot;")}"><b style="font-weight:500">${l.mk}</b> <span style="color:var(--ink-3)">${l.g.toLowerCase()}</span></td><td class="ds" style="color:var(--ink-2)">${pm.entry||"&mdash;"}</td><td class="r num">${u?(l.rate!=null?fmt(l.rate):"&mdash;"):pm.status==="suggested"?`<span class="sug">${fmt(pm.rate)}?</span>`:"&mdash;"}</td><td class="num" style="color:var(--ink-2);font-size:12px">${(()=>{const hp=u?l.lhpu:(pm.status==="suggested"?pm.lhpu:null);if(hp==null)return "&mdash;";const r=u?effL(l):(pm.lrate!=null?pm.lrate:PRICING.labourRate);return hp+" h/"+l.u+(r!=null?" @ "+r:" (no rate)")})()}</td><td class="r score ${pm.score&&pm.score<.8?"lo":""}">${pm.score?pm.score.toFixed(2):""}</td><td>${stt}</td></tr>`}).join("")+`</tbody></table>`
+      return `<tr class="l mrow" style="--n:${Math.min(i,20)}"><td class="ds" title="${esc(l.ds)}"><b style="font-weight:500">${esc(l.mk)}</b> <span style="color:var(--ink-3)">${l.g.toLowerCase()}</span></td><td class="ds" style="color:var(--ink-2)">${pm.entry||"&mdash;"}</td><td class="r num">${u?(l.rate!=null?fmt(l.rate):"&mdash;"):pm.status==="suggested"?`<span class="sug">${fmt(pm.rate)}?</span>`:"&mdash;"}</td><td class="num" style="color:var(--ink-2);font-size:12px">${(()=>{const hp=u?l.lhpu:(pm.status==="suggested"?pm.lhpu:null);if(hp==null)return "&mdash;";const r=u?effL(l):(pm.lrate!=null?pm.lrate:PRICING.labourRate);return hp+" h/"+l.u+(r!=null?" @ "+r:" (no rate)")})()}</td><td class="r score ${pm.score&&pm.score<.8?"lo":""}">${pm.score?pm.score.toFixed(2):""}</td><td>${stt}</td></tr>`}).join("")+`</tbody></table>`
     :`<div style="padding:48px 28px;color:var(--ink-2)">No takeoff lines yet, so there is nothing to price.</div>`;
   $$("#pTbl [data-acc]").forEach(b=>b.onclick=()=>{const l=LINES.find(x=>x.id===+b.dataset.acc);l.rate=l.pm.rate;l.lhpu=l.pm.lhpu!=null?l.pm.lhpu:null;l.lrate=l.pm.lrate!=null?l.pm.lrate:null;l.pm={...l.pm,status:"accepted"};renderPricing();renderAll()});
   renderPricingTotals();
@@ -1396,6 +1398,7 @@ async function boot(){
   if(DEMO_AI){const el=$("#saveLbl");if(el)el.textContent="Demo AI data, not saved"}
   try{const pr=await (await fetch("/api/projects")).json();
     $("#recent").innerHTML=pr.map(p=>`<a href="?project=${encodeURIComponent(p.id)}" style="${p.id===PID?"font-weight:600":""}">${esc(p.name)} <span class="num">${esc(p.note)}</span></a>`).join("")}catch(e){}
+  {const up=!!(PROJ.id&&!PROJ.sample);const rb=document.getElementById("readBtn"),ab=document.getElementById("aiBtn");if(rb)rb.hidden=!up;if(ab)ab.hidden=!(up&&LINES.length)}
   if(empty)go("upload");else if(!LINES.length)go("review");
   renderAll();
   if(IS_POP&&BC)BC.postMessage({type:"hello",from:ME});
@@ -1461,6 +1464,35 @@ if(IS_POP){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on'
   b.onclick=async()=>{if(!ev)return;ev.prompt();try{await ev.userChoice}catch(e){}ev=null;b.hidden=true};
   addEventListener("appinstalled",()=>{b.hidden=true});
 })();
+
+/* --- read the markups sheet by sheet: the app's own logic first (embedded text, annotations, colour measuring), AI only as a second opinion --- */
+async function readSheets(kind,btn){
+  const total=SHEETS.length,msg=()=>document.getElementById("readMsg"),all=[...document.querySelectorAll(kind==="ai"?"#aiBtn":"[data-read],#readBtn")];
+  const label=kind==="ai"?"AI check":"Read markups",busy=t=>all.forEach(b=>{b.disabled=!!t;b.textContent=t||label});
+  let found=0,measured=0,sources=new Set(),notes=[];
+  try{
+    if(kind!=="ai")await fetch(`/api/project/${PID}/read`,{method:"DELETE"});
+    for(let n=1;n<=total;n++){
+      busy(`${kind==="ai"?"AI reading":"Reading"} sheet ${n} of ${total}...`);
+      const r=await fetch(`/api/project/${PID}/${kind==="ai"?"ai":"read"}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:n,ratio:(SCALES[n-1]||{}).ratio})});
+      let j={};try{j=await r.json()}catch(e){}
+      if(!r.ok)throw new Error(j.error||"Could not read sheet "+n);
+      found+=j.found||0;measured+=j.measured||0;if(j.source)sources.add(j.source);if(j.note)notes.push(j.note);
+    }
+    if(!found&&!measured){busy(0);const t=notes[0]||"Nothing could be read from these sheets.";if(msg())msg().textContent=t;else alert(t);return}
+    location.reload();
+  }catch(e){busy(0);if(msg())msg().textContent=e.message;else alert(e.message)}
+}
+document.addEventListener("click",e=>{
+  const b=e.target.closest("[data-read],#readBtn");if(b)return readSheets("logic",b);
+  if(e.target.closest("#aiBtn"))readSheets("ai");
+});
+document.addEventListener("dblclick",async e=>{
+  const td=e.target.closest("td.ds[data-lk]");if(!td)return;
+  const name=prompt("What is this markup? (for example: Strip footing SF1)");if(!name||!name.trim())return;
+  const r=await fetch(`/api/project/${PID}/label`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:td.dataset.lk,label:name.trim()})});
+  if(r.ok)location.reload();
+});
 boot();
 </script>
 </body>

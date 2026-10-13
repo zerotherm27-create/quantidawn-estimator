@@ -7,8 +7,12 @@ Run the web app:
 What it does today
 - Opens the two sample projects (Boxshall, Westgarth): runs the real rules pipeline over the legend
   entries read from their marked-up plans, shows the sheets, and lets you review, measure, verify and export.
-- Accepts PDF uploads: renders the pages and detects each sheet's scale. Takeoff lines for uploads need AI
-  measuring, which is not connected yet, so uploaded projects start empty.
+- Accepts PDF uploads: renders the pages and detects each sheet's scale. **Read markups** then uses the app's own
+  logic, no AI: (1) legend rows and measurement annotations when the PDF still has live text or annotations
+  (exact, goes through the same rules as the samples); (2) for flattened PDFs, saturated colour groups are measured
+  from the sheet's scale (set the scale first). Colour groups are unlabelled; double-click one to name it. **AI check**
+  (needs ANTHROPIC_API_KEY and credit) is only a second opinion that marks lines agreed or disputed; it never
+  changes a logic number. A person verifies every line.
 - Exports a takeoff workbook, or fills a client's own Excel template (formulas are never overwritten).
 - "Demo AI check" shows planted disagreements to illustrate the cross-check. It is not a real AI run.
 

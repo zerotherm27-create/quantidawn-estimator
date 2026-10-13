@@ -23,8 +23,9 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 
 from core import auth, shares
+from core import logic_reader, reader
 from core.price_matcher import load_price_list, price_lines
-from core.project import DATA, ROOT, SAMPLES, _scale_json, demo_ai, from_json, native_z, render_pages, sample_project
+from core.project import DATA, ROOT, SAMPLES, _scale_json, apply_entries, demo_ai, from_json, native_z, render_pages, sample_project
 from core.render import render_crop
 from core.store import blob_file, get_store
 from core.scale import paper_of
@@ -80,7 +81,9 @@ def load_project(pid):
     p = get_store().doc_get("project", pid)
     if p is None:
         abort(404)
-    return p
+    st = get_store()
+    ed, ai, lb = st.doc_get("entries", pid), st.doc_get("ai", pid), st.doc_get("labels", pid)
+    return apply_entries(p, ed or {}, ai, lb) if (ed or ai) else p
 
 
 def blob_response(key, max_age=3600):
@@ -214,7 +217,7 @@ def build_project(pid, entries):
     proj = {"id": pid, "name": clean_label(Path(entries[0][0]).stem), "engineer": "", "rev": "", "status": "Uploaded",
             "sample": False, "profile": "westgarth", "groups": [], "pages": pages, "lines": [],
             "skipped": [], "ai": "not run",
-            "message": "Pages are ready. Takeoff lines need AI measuring, which is not connected yet."}
+            "message": "Pages are ready. Press Read markups to pull the legend quantities off the marked-up sheets."}
     get_store().doc_put("project", pid, proj)
     return proj
 
@@ -278,6 +281,86 @@ def upload_project():
         st.delete_prefix(f"pdf/{pid}")
         return jsonify(error=str(exc)), 400
     return jsonify(id=pid)
+
+
+def _uploaded(pid):
+    check_id(pid)
+    if pid in SAMPLES:
+        abort(400, description="The sample projects already have their lines.")
+    p = get_store().doc_get("project", pid)
+    if p is None:
+        abort(404)
+    try:
+        n = int((request.get_json(force=True, silent=True) or {}).get("page"))
+    except (TypeError, ValueError):
+        abort(400)
+    if not 1 <= n <= len(p["pages"]):
+        abort(404)
+    return p, n
+
+
+@app.post("/api/project/<pid>/read")
+def read_markups(pid):
+    """The app's own logic, one sheet per request: embedded legend text and annotations first, then colour measuring."""
+    p, n = _uploaded(pid)
+    pdf, idx = page_source(pid, n)
+    emb = logic_reader.read_embedded(pdf, idx)
+    measures, note = [], ""
+    if not emb["entries"]:                                  # flattened page: measure the coloured markups from the sheet's scale
+        try:
+            ratio = float((request.get_json(force=True, silent=True) or {}).get("ratio"))        # the scale as set on screen
+        except (TypeError, ValueError):
+            ratio = (p["pages"][n - 1].get("scale") or {}).get("ratio")
+        if ratio is not None and not (math.isfinite(ratio) and 1 <= ratio <= 10000):
+            ratio = None
+        measures, note = logic_reader.measure_colours(pdf, idx, ratio)
+        if not ratio:
+            note = f"Sheet {n}: set its scale first (Enter scale), then press Read markups again."
+    st = get_store()
+    doc = st.doc_get("entries", pid) or {"pages": {}}
+    doc["pages"][str(n)] = {"source": emb["source"] or ("colour" if measures else ""), "entries": emb["entries"],
+                            "measures": measures, "note": note, "read": int(time.time())}
+    st.doc_put("entries", pid, doc)
+    return jsonify(page=n, source=doc["pages"][str(n)]["source"], found=len(emb["entries"]), measured=len(measures), note=note)
+
+
+@app.post("/api/project/<pid>/ai")
+def ai_read_markups(pid):
+    """Optional second opinion: the AI reads the legend. It only cross-checks the logic result (or fills in when logic found no legend)."""
+    p, n = _uploaded(pid)
+    pdf, idx = page_source(pid, n)
+    try:
+        res = reader.read_page_entries(pdf, idx)
+    except reader.ReaderError as exc:
+        return jsonify(error=str(exc)), 502
+    st = get_store()
+    doc = st.doc_get("ai", pid) or {"pages": {}}
+    doc["pages"][str(n)] = {**res, "read": int(time.time())}
+    st.doc_put("ai", pid, doc)
+    return jsonify(page=n, sheet=res["sheet"], found=len(res["entries"]))
+
+
+@app.put("/api/project/<pid>/label")
+def name_markup(pid):
+    """Give a colour-measured group a real name (a person identifies what each colour is)."""
+    check_id(pid)
+    body = request.get_json(force=True, silent=True) or {}
+    key, label = str(body.get("key", "")), clean_label(body.get("label"), 60)
+    if not re.match(r"^\d{1,3}c\d{1,6}$", key):
+        abort(400)
+    st = get_store()
+    doc = st.doc_get("labels", pid) or {}
+    doc[key] = label
+    st.doc_put("labels", pid, doc)
+    return jsonify(ok=True)
+
+
+@app.delete("/api/project/<pid>/read")
+def clear_markups(pid):
+    check_id(pid)
+    for coll in ("entries", "ai", "labels"):
+        get_store().doc_delete(coll, pid)
+    return jsonify(ok=True)
 
 
 @app.get("/api/project/<pid>")
