@@ -40,7 +40,7 @@ app.config.update(SECRET_KEY=auth.secret_key(), SESSION_COOKIE_HTTPONLY=True, SE
 if os.environ.get("QD_TRUST_PROXY") == "1":                   # behind Caddy / nginx / a platform load balancer
     app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1, x_host=1)
 THROTTLE = auth.Throttle()
-PUBLIC_PREFIXES = ("/login", "/auth/", "/fonts/", "/d/", "/healthz", "/favicon.ico", "/brand/", "/manifest.webmanifest", "/apple-touch-icon")
+PUBLIC_PREFIXES = ("/login", "/auth/", "/fonts/", "/d/", "/healthz", "/favicon.ico", "/brand/", "/manifest.webmanifest", "/apple-touch-icon", "/offline", "/sw.js")
 WEB = ROOT / "web"
 _su = urlparse(os.environ.get("SUPABASE_URL", ""))
 STORAGE_ORIGIN = f" {_su.scheme}://{_su.netloc}" if _su.netloc and os.environ.get("SUPABASE_SERVICE_KEY") else ""   # signed image and upload links
@@ -551,10 +551,26 @@ def brand_file(name):
 
 @app.get("/manifest.webmanifest")
 def manifest():
-    return jsonify(name="QuantiDawn Estimator", short_name="Estimator", start_url="/", display="standalone",
-                   background_color="#f6f6f7", theme_color="#c2410c",
-                   icons=[{"src": "/brand/favicon-192.png", "sizes": "192x192", "type": "image/png"},
-                          {"src": "/brand/favicon-512.png", "sizes": "512x512", "type": "image/png"}])
+    resp = jsonify(id="/", name="QuantiDawn Estimator", short_name="Estimator", start_url="/", scope="/", display="standalone",
+                   description="Construction takeoffs your team can check.", background_color="#f6f6f7", theme_color="#c2410c",
+                   icons=[{"src": "/brand/favicon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any"},
+                          {"src": "/brand/favicon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any"}])
+    resp.mimetype = "application/manifest+json"
+    return resp
+
+
+@app.get("/sw.js")
+def service_worker():
+    """Served from the root so it can control the whole app; never cached, so updates arrive at once."""
+    resp = send_from_directory(WEB, "sw.js", max_age=0, mimetype="text/javascript")
+    resp.headers["Cache-Control"] = "no-cache"
+    resp.headers["Service-Worker-Allowed"] = "/"
+    return resp
+
+
+@app.get("/offline")
+def offline_page():
+    return Response((WEB / "offline.html").read_text(), mimetype="text/html")
 
 
 @app.get("/apple-touch-icon.png")

@@ -40,4 +40,5 @@ p{color:var(--ink-2)}
   <p style="font-size:13px">Prepared by QuantiDawn. Excel workbook (.xlsx). Keep this link private: anyone who has it can download the file.</p>
 </main>
 <script>if(document.getElementById('f').dataset.state==='gone'){document.getElementById('f').remove();document.getElementById('dl').remove();document.querySelector('main p').remove()}</script>
+<script>if("serviceWorker"in navigator)addEventListener("load",()=>navigator.serviceWorker.register("/sw.js").catch(()=>{}))</script>
 </body></html>
