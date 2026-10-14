@@ -106,7 +106,10 @@ class LocalStore:
         base = self.root / "docs" / coll
         if base.exists():
             for f in base.glob("*.json"):
-                raw = json.loads(f.read_text())
+                try:
+                    raw = json.loads(f.read_text())
+                except (FileNotFoundError, ValueError):
+                    continue  # deleted or half-written between the listing and the read: skip it, don't fail the list
                 if all(raw["data"].get(k) == v for k, v in (where or {}).items()):
                     out.append((f.stem, raw["data"], raw["updated"]))
         return sorted(out, key=lambda r: r[2], reverse=True)

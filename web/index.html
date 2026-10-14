@@ -1269,6 +1269,7 @@ function applyRemote(d){
   try{applyState(d,true);renderAll();renderScale();drawOverlays();renderTools()}finally{REMOTE=false}}
 if(BC)BC.onmessage=e=>{
   const m=e.data;if(!m||m.from===ME||!PROJ)return;
+  if(m.type==="base"){if(m.base>(BASE||0))BASE=m.base;return}     // the other window saved: its stamp is now the one to compare against
   if(m.type==="hello"){BC.postMessage({type:"state",from:ME,doc:JSON.parse(JSON.stringify(buildState()))})}
   else if(m.type==="state")applyRemote(m.doc);
   else if(m.type==="bye"&&!IS_POP)dock();
@@ -1371,12 +1372,22 @@ let saveT=null;
 const NOSAVE=DEMO_AI;
 function stamp(t){return new Date(t).toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"})}
 function scheduleSave(){if(!PROJ||REMOTE)return;scheduleSync();if(NOSAVE)return;clearTimeout(saveT);saveT=setTimeout(saveNow,400)}
-async function saveNow(){
+let BASE=null,CONFLICT=false;     // BASE: the server's `saved` stamp this browser last loaded or wrote
+async function saveNow(force){
   const el=$("#saveLbl");
   try{
-    const body=buildState();
+    const body=buildState();body.base=BASE==null?0:BASE;if(force===true)body.force=true;
     const r=await fetch(`/api/project/${PID}/state`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+    if(r.status===409){
+      const c=await r.json().catch(()=>({}));CONFLICT=true;
+      if(el)el.textContent="Not saved: changed by someone else";
+      const who=c.by?(" ("+c.by+")"):"",when=c.saved?(" at "+stamp(c.saved*1000)):"";
+      if(confirm("Someone else"+who+" saved this project"+when+" after you opened it.\n\nOK = overwrite their changes with yours.\nCancel = keep their version (reload to see it; your unsaved edits on this page will be lost)."))
+        return saveNow(true);
+      location.reload();return;
+    }
     if(!r.ok)throw 0;
+    const j=await r.json().catch(()=>({}));if(j.saved){BASE=j.saved;if(BC)BC.postMessage({type:"base",from:ME,base:BASE})}CONFLICT=false;
     if(el)el.textContent="Saved "+stamp(Date.now());
   }catch(e){if(el)el.textContent="Not saved (server unreachable)"}
 }
@@ -1419,6 +1430,7 @@ async function boot(){
   SCALES=PROJ.pages.map(p=>({...p.scale}));
   LINES.forEach(l=>{l.src2=null;l.dm=dmOf(l)});
   st.sel=LINES.length?LINES[0].id:null;
+  if(PROJ.state&&PROJ.state.saved)BASE=PROJ.state.saved;
   if(!DEMO_AI)applyState(PROJ.state);
   $("#ptitle").textContent=PROJ.name;$("#metaE").textContent=PROJ.engineer||"";$("#metaR").textContent=PROJ.rev?"Rev "+PROJ.rev:"";$("#metaS").textContent=PROJ.status||"";
   $("#qlist").innerHTML=SKIPPED.map(x=>`<li>${esc(x)}</li>`).join("");
