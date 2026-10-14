@@ -406,6 +406,9 @@ body.pop .popnote{display:none}
 #tour h3{font-size:16px;letter-spacing:-.01em;margin:4px 0 6px}#tour p{font-size:13.5px;line-height:1.5;color:var(--ink-2);margin:0}
 #tour .tf{display:flex;align-items:center;gap:8px;margin-top:14px}#tour .tf .sp{flex:1}
 #tour .tskip{background:none;border:0;color:var(--ink-3);font:inherit;font-size:12.5px;cursor:pointer;padding:6px 2px}
+
+.dupb{display:inline-block;margin-left:6px;padding:0 6px;border-radius:9px;font-size:10.5px;font-weight:600;line-height:16px;background:#fdecc8;color:#8a5a00;white-space:nowrap}
+@media (prefers-color-scheme:dark){.dupb{background:#4a3a12;color:#f1c768}}
 </style>
 </head>
 <body>
@@ -787,7 +790,12 @@ async function uploadPdfs(files){
 }
 
 /* --- review rendering --- */
+function dupBadge(l){
+  if(!l.dup||!l.dup.length)return "";
+  const twin=LINES.find(x=>x.id===l.dup[0]),t=twin?`${twin.mk} ${twin.ds}`:"another line";
+  return ` <span class="dupb" title="Looks like the same row read twice: ${esc(t)}. Check the sheet. If it is a repeat, press F on that line to flag it for review.">Possible duplicate</span>`}
 function visible(l){
+  if(st.filter==="dups"&&!(l.dup&&l.dup.length))return false;
   if(st.filter==="review"&&l.st==="ok")return false;
   if(st.filter==="disp"&&!(l.ag==="disputed"||l.ag==="ai_only"))return false;
   if(st.filter==="verified"&&l.st!=="ok")return false;
@@ -835,7 +843,7 @@ function renderTable(){
     h+=`<tr class="g ${shut?"shut":""}" data-g="${gi}" style="top:30px"><td colspan="4"><svg class="i chev" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg>${g.toUpperCase()} <span style="color:var(--ink-3);font-weight:400;margin-left:6px">${rows.length} lines</span></td>${PRICING.on?`<td class="tot r">${anyc?money(gc):""}</td><td colspan="2"></td>`:`<td class="tot r">${tot==null?"":fmt(tot,1)+" "+units[0]}</td>`}</tr>`;
     if(!shut)rows.forEach(l=>{
       const [lab,cls]=STT[l.st];
-      h+=`<tr class="l ${l.id===st.sel?"sel":""}" data-id="${l.id}" style="--n:${n++}"><td class="mk" title="${esc(l.mk)}">${esc(l.mk)}</td><td class="ds" ${l.lk?`data-lk="${esc(l.lk)}" title="Double-click to name this markup"`:`title="${esc(l.ds)}"`}>${l.hex?`<i style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:${esc(l.hex)}"></i>`:""}${esc(l.ds)}</td><td class="r num">${fmt(l.q)} <span class="u">${l.u}</span></td>${PRICING.on?`<td class="r num">${rateCell(l)}</td><td class="r num" title="${costOf(l)==null?"":`Materials ${matCost(l)==null?"none":money(matCost(l))}. Labour ${labHours(l)==null?"none":fmt(labHours(l),1)+" hrs"+(labCost(l)==null?", no labour rate":" = "+money(labCost(l)))}`}">${costOf(l)==null?`<span style="color:var(--ink-3)">&mdash;</span>`:fmt(costOf(l))}</td>`:`<td class="dm num hide-s">${l.dm}</td>`}<td>${agCell(l)}</td><td><span class="stt ${cls}"><span class="dot"></span>${lab}</span></td></tr>`;
+      h+=`<tr class="l ${l.id===st.sel?"sel":""}" data-id="${l.id}" style="--n:${n++}"><td class="mk" title="${esc(l.mk)}">${esc(l.mk)}</td><td class="ds" ${l.lk?`data-lk="${esc(l.lk)}" title="Double-click to name this markup"`:`title="${esc(l.ds)}"`}>${l.hex?`<i style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:${esc(l.hex)}"></i>`:""}${esc(l.ds)}${dupBadge(l)}</td><td class="r num">${fmt(l.q)} <span class="u">${l.u}</span></td>${PRICING.on?`<td class="r num">${rateCell(l)}</td><td class="r num" title="${costOf(l)==null?"":`Materials ${matCost(l)==null?"none":money(matCost(l))}. Labour ${labHours(l)==null?"none":fmt(labHours(l),1)+" hrs"+(labCost(l)==null?", no labour rate":" = "+money(labCost(l)))}`}">${costOf(l)==null?`<span style="color:var(--ink-3)">&mdash;</span>`:fmt(costOf(l))}</td>`:`<td class="dm num hide-s">${l.dm}</td>`}<td>${agCell(l)}</td><td><span class="stt ${cls}"><span class="dot"></span>${lab}</span></td></tr>`;
     });
   });
   if(n===0)h+=LINES.length===0
@@ -846,7 +854,7 @@ function renderTable(){
 }
 function renderChips(){
   const all=LINES.length, rev=LINES.filter(l=>l.st!=="ok").length, ver=all-rev;
-  $("#chips").innerHTML=[["all","All",all],["disp","AI disagrees",LINES.filter(l=>l.ag==="disputed"||l.ag==="ai_only").length],["review","To check",rev],["verified","Verified",ver]].map(([k,t,c])=>`<button class="chip ${st.filter===k?"on":""}" data-f="${k}">${t}<b>${c}</b></button>`).join("");
+  $("#chips").innerHTML=[["all","All",all],["disp","AI disagrees",LINES.filter(l=>l.ag==="disputed"||l.ag==="ai_only").length],["review","To check",rev],["verified","Verified",ver],...(LINES.some(l=>l.dup&&l.dup.length)?[["dups","Possible duplicates",LINES.filter(l=>l.dup&&l.dup.length).length]]:[])].map(([k,t,c])=>`<button class="chip ${st.filter===k?"on":""}" data-f="${k}">${t}<b>${c}</b></button>`).join("");
 }
 function renderSummary(){
   const ver=LINES.filter(l=>l.st==="ok").length;

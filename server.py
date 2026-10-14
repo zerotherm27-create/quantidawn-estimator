@@ -24,6 +24,7 @@ from werkzeug.utils import secure_filename
 
 from core import auth, shares
 from core import logic_reader, markup_pdf, reader
+from core.dupes import find_duplicates
 from core.price_matcher import load_price_list, price_lines
 from core.project import DATA, ROOT, SAMPLES, _scale_json, apply_entries, demo_ai, from_json, native_z, render_pages, sample_project
 from core.render import render_crop
@@ -401,6 +402,10 @@ def project(pid):
     if request.args.get("demo_ai") and p["lines"]:
         p = demo_ai(p)
     p["state"] = None if request.args.get("demo_ai") else get_store().doc_get("state", pid)
+    dups = find_duplicates(p["lines"])                   # look-alike lines are only flagged for a person; nothing is removed
+    for l in p["lines"]:
+        if l["id"] in dups:
+            l["dup"] = dups[l["id"]]
     return jsonify(p)
 
 
