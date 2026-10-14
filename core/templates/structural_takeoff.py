@@ -8,7 +8,7 @@ from core.takeoff_builder import WESTGARTH, group_order
 
 HEAD = ["", "Description", "Units", "Diameter (m.)", "Length (m.)", "Width /thickness(m.)",
         "Height (m.)", "Area (m2)", "Count (each)", "Volume (m3)", "Status"]
-SUM_COL = {"m3": "J", "m2": "H", "tons": "I", "m": "E"}
+SUM_COL = {"m3": "J", "m2": "H", "tons": "I", "m": "E", "each": "I"}
 
 
 def _row_formulas(l, r):
@@ -42,6 +42,38 @@ def _row_formulas(l, r):
     return c
 
 
+def _residential_row(l, r):
+    """One residential line with a live formula in the unit's own column; the factor and openings sit inside the formula."""
+    c = {"A": l.mark, "B": l.description, "C": l.unit}
+    L, W, H, N, A = l.length, l.width, l.height, l.count, l.area
+    R = f"*{round(l.factor, 6)}" if l.factor not in (None, 1) else ""
+    out = {"m2": "H", "m3": "J", "m": "E", "each": "I", "tons": "I"}[l.unit]
+    if l.calc == "plan" and A is not None and L is None:
+        c["H"] = round(A, 4)
+    elif l.calc == "plan":                                                  # width x height x count (windows, doors)
+        c["E"], c["F"], c["I"] = round(L, 4), round(W, 4), N
+        c["H"] = f"=E{r}*F{r}*I{r}"
+    elif l.calc == "prism":
+        c["H"], c["G"] = round(A, 4), round(H, 4)
+        c["J"] = f"=H{r}*G{r}"
+    elif l.calc in ("edge", "wall"):
+        c["E"], c["G"] = round(L, 4), round(H, 4)
+        o = f"-{round(l.openings, 4)}" if l.calc == "wall" and l.openings else ""
+        c[out] = f"=(E{r}*G{r}{o}){R}" if o else f"=E{r}*G{r}{R}"
+    elif l.calc == "len":
+        c["E"] = round(L, 4)
+        c[out] = f"=E{r}{R}" if R else round(L, 4)
+    elif l.calc == "each":
+        c["I"] = N
+        if H is not None:
+            c["G"] = round(H, 4)
+            c["E"] = f"=I{r}*G{r}"
+    elif l.calc == "bar":                                                   # total bar length x kg per m
+        c["E"] = round(A, 4)
+        c["I"] = f"=E{r}*{round(l.k, 4)}/1000"
+    return c
+
+
 def write_structural_takeoff(lines, path, skipped=(), profile=WESTGARTH, sheet="TAKEOFF", pricing=None):
     wb = openpyxl.Workbook()
     ws = wb.active
@@ -65,8 +97,9 @@ def write_structural_takeoff(lines, path, skipped=(), profile=WESTGARTH, sheet="
         ws.cell(row=r, column=1, value=group).font = Font(bold=True)
         r += 2
         first = r
+        residential = profile.trade == "residential"
         for l in glines:
-            for col, v in _row_formulas(l, r).items():
+            for col, v in (_residential_row if residential else _row_formulas)(l, r).items():
                 ws[f"{col}{r}"] = v
             ws[f"K{r}"] = getattr(l, "status", "PENDING")
             if priced:
@@ -80,11 +113,21 @@ def write_structural_takeoff(lines, path, skipped=(), profile=WESTGARTH, sheet="
                         ws[f"O{r}"] = l.labour_rate
                         ws[f"P{r}"] = f"=N{r}*O{r}"
             r += 1
-        col = SUM_COL.get(glines[0].unit, "J")
-        label_col = {"J": "I", "H": "G", "I": "F", "E": "D"}[col]
-        ws[f"{label_col}{r}"] = "SUMMARY"
-        ws[f"{col}{r}"] = f"=SUM({col}{first}:{col}{r - 1})"
-        ws[f"{col}{r}"].font = Font(bold=True)
+        if residential:                       # a trade mixes m2, m, each and tonnes: one SUMIF row per unit
+            last = r - 1
+            for unit in dict.fromkeys(l.unit for l in glines):
+                col = SUM_COL[unit]
+                ws[f"B{r}"] = f"SUMMARY ({unit})"
+                ws[f"{col}{r}"] = f'=SUMIF(C{first}:C{last},"{unit}",{col}{first}:{col}{last})'
+                ws[f"B{r}"].font = ws[f"{col}{r}"].font = Font(bold=True)
+                r += 1
+            r -= 1
+        else:
+            col = SUM_COL.get(glines[0].unit, "J")
+            label_col = {"J": "I", "H": "G", "I": "F", "E": "D"}[col]
+            ws[f"{label_col}{r}"] = "SUMMARY"
+            ws[f"{col}{r}"] = f"=SUM({col}{first}:{col}{r - 1})"
+            ws[f"{col}{r}"].font = Font(bold=True)
         if priced:
             ws[f"M{r}"] = f"=SUM(M{first}:M{r - 1})"
             ws[f"P{r}"] = f"=SUM(P{first}:P{r - 1})"

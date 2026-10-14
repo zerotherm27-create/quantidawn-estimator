@@ -26,6 +26,8 @@ class Profile:
     blind: Optional[str] = None
     joints: bool = False
     wall_form_both_faces: bool = True
+    trade: str = "structural"          # "residential" hands the legend to core/residential.py
+    groups: tuple = ()                 # the takeoff groups in order, for a trade whose groups are not the structural ones
 
 
 WESTGARTH = Profile(
@@ -36,10 +38,17 @@ BOXSHALL = Profile(
     "boxshall", exc="DETAILED EXCAVATION", conc="CONCRETE SUPPLY AND INSTALL",
     form="FORMWORKS", poly="BLINDING", sand="BLINDING", reo_mesh="REINFORCEMENT",
     pt="POST TENSION REINFORCEMENT", blind="BLINDING", blind_pads_h=0.3, joints=True)
-PROFILES = {p.name: p for p in (WESTGARTH, BOXSHALL)}
+RESIDENTIAL = Profile("residential", exc="", conc="", form="", poly="", sand="", trade="residential",
+                      groups=("CONCRETE", "MASONRY", "STRUCTURAL STEEL", "METAL ROOFING", "ALUMINIUM DOORS, WINDOWS AND GLAZING",
+                              "DOORS AND DOOR HARDWARE", "WINDOW FURNISHING", "FLOOR COVERINGS", "WALL AND FLOOR TILING",
+                              "WATERPROOFING", "INTERNAL LININGS", "EXTERNAL CLADDING", "INTERNAL AND EXTERNAL PAINT",
+                              "JOINERY AND BENCHTOPS"))
+PROFILES = {p.name: p for p in (WESTGARTH, BOXSHALL, RESIDENTIAL)}
 
 
 def group_order(profile):
+    if profile.groups:
+        return list(profile.groups)
     seq = [profile.exc, profile.poly, profile.sand, profile.blind, profile.conc,
            profile.precast, profile.reo_mesh, profile.pt, profile.form]
     out = []
@@ -50,6 +59,9 @@ def group_order(profile):
 
 
 def build_takeoff(entries, profile=WESTGARTH):
+    if profile.trade == "residential":
+        from core.residential import build_residential
+        return build_residential(entries, profile)
     p = profile
     lines, skipped = [], []
 

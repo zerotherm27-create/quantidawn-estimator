@@ -327,18 +327,25 @@ def read_markups(pid):
 
 @app.post("/api/project/<pid>/ai")
 def ai_read_markups(pid):
-    """Optional second opinion: the AI reads the legend. It only cross-checks the logic result (or fills in when logic found no legend)."""
+    """Optional second opinion: the AI reads the legend. It only cross-checks the logic result (or fills in when logic found no legend).
+
+    Token saving: a sheet with no coloured markup and no embedded legend is skipped without a call (send force to read it anyway);
+    where the legend was found is remembered per sheet, so reading it again looks at that area only (send fresh to start over)."""
     p, n = _uploaded(pid)
+    body = request.get_json(force=True, silent=True) or {}
     pdf, idx = page_source(pid, n)
-    try:
-        res = reader.read_page_entries(pdf, idx)
-    except reader.ReaderError as exc:
-        return jsonify(error=str(exc)), 502
+    if not body.get("force") and not logic_reader.has_markup(pdf, idx) and not logic_reader.read_embedded(pdf, idx)["entries"]:
+        return jsonify(page=n, skipped=True, found=0, reason="no coloured markup on this sheet")
     st = get_store()
     doc = st.doc_get("ai", pid) or {"pages": {}}
+    box = body.get("box") or (None if body.get("fresh") else (doc["pages"].get(str(n)) or {}).get("legend_box"))
+    try:
+        res = reader.read_page_entries(pdf, idx, box=box) if box else reader.read_page_entries(pdf, idx)
+    except reader.ReaderError as exc:
+        return jsonify(error=str(exc)), 502
     doc["pages"][str(n)] = {**res, "read": int(time.time())}
     st.doc_put("ai", pid, doc)
-    return jsonify(page=n, sheet=res["sheet"], found=len(res["entries"]))
+    return jsonify(page=n, sheet=res["sheet"], found=len(res["entries"]), skipped=False, area_only=bool(box and res.get("legend_box") == box))
 
 
 @app.put("/api/project/<pid>/label")
