@@ -922,6 +922,10 @@ function renderScale(){
   let h=`<div class="srow"><span class="ratio">${sc.ratio?"1:"+sc.ratio:"1:?"}</span><span class="badge ${lbl[1]}">${lbl[0]}</span><span class="sgrow"></span>`;
   const txt=`${sc.src}${sc.note?". "+sc.note:""}`;
   if(sc.status!=="ok"&&sc.ratio)h+=`<button class="btn primary" id="scOk">Confirm 1:${sc.ratio}</button>`;
+  if(sc.status!=="ok"){
+    h+=`<button class="btn" id="scDet" title="Reads the scale printed on this sheet. Printed text is read for free; a picture-only sheet is read by the AI (small cost). You still confirm it.">Detect scale</button>`;
+    if(SCALES.filter(x=>x.status!=="ok").length>1)h+=`<button class="btn" id="scDetAll" title="Detect the scale on every sheet that is not confirmed yet">All sheets</button>`;
+  }
   h+=`<button class="btn" id="scEnt">${ENT.on?"Cancel":"Enter scale"}</button>`;
   h+=`<button class="btn" id="scCal">${CAL.on?"Cancel check":"Check with 2 points"}</button></div><div class="stxt" title="${txt.replace(/"/g,"&quot;")}">${txt}</div>`;
   if(ENT.on){
@@ -944,6 +948,23 @@ function renderScale(){
     }
   }
   el.innerHTML=h;
+  const detect=async(idx)=>{      // the AI only transcribes the words; core/scale.py works out the ratio and a person confirms it
+    const r=await fetch(`/api/project/${PID}/scale`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:idx+1})});
+    let j={};try{j=await r.json()}catch(e){}
+    if(!r.ok)throw new Error(j.error||"Could not read the scale on sheet "+(idx+1));
+    if(!j.found)return false;
+    if(SCALES[idx].status!=="ok")Object.assign(SCALES[idx],{ratio:j.scale.ratio,status:j.scale.status,src:j.scale.src,note:j.scale.note});
+    return true};
+  const one=$("#scDet");if(one)one.onclick=async()=>{
+    one.disabled=true;one.textContent="Reading...";
+    try{if(await detect(V.page))afterScale();else{alert("No scale ratio found on this sheet. Use Enter scale, or Check with 2 points.");renderScale()}}
+    catch(e){alert(e.message);renderScale()}};
+  const all=$("#scDetAll");if(all)all.onclick=async()=>{
+    const todo=SCALES.map((x,i)=>i).filter(i=>SCALES[i].status!=="ok");let got=0,miss=[];
+    try{for(const [k,i] of todo.entries()){all.disabled=true;all.textContent=`Sheet ${i+1} (${k+1} of ${todo.length})...`;if(await detect(i))got++;else miss.push(i+1)}}
+    catch(e){alert(e.message)}
+    if(miss.length)alert(`Found a scale on ${got} sheet${got===1?"":"s"}. No ratio found on sheet${miss.length>1?"s":""} ${miss.join(", ")}: use Enter scale or Check with 2 points.`);
+    afterScale()};
   $("#scEnt").onclick=()=>{ENT.on=!ENT.on;ENT.val=sc.ratio?String(sc.ratio):"";CAL.on=false;CAL.pts=[];$("#plan").classList.remove("cal");renderScale();drawOverlays();if(ENT.on){const i=$("#entIn");i&&i.focus()}};
   const ei=$("#entIn");if(ei){ei.oninput=()=>{ENT.val=ei.value;const pos=ei.selectionStart;renderScale();const n=$("#entIn");n.focus();n.setSelectionRange(pos,pos)}}
   $$("[data-ent]").forEach(b=>b.onclick=()=>{ENT.val=b.dataset.ent;renderScale()});

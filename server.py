@@ -28,7 +28,7 @@ from core.price_matcher import load_price_list, price_lines
 from core.project import DATA, ROOT, SAMPLES, _scale_json, apply_entries, demo_ai, from_json, native_z, render_pages, sample_project
 from core.render import render_crop
 from core.store import blob_file, get_store
-from core.scale import paper_of
+from core.scale import find_scale, paper_of
 from core.takeoff_builder import PROFILES
 from core.template_filler import fill_template, match_lines
 from core.template_reader import read_template
@@ -211,7 +211,7 @@ def build_project(pid, entries):
             w, h = page.rect.width, page.rect.height
             idx = len(pages) + 1
             pages.append({"n": clean_label(Path(orig).stem, 18), "t": f"page {i + 1}", "w": w, "h": h, "paper": paper_of(w, h),
-                          "img": f"/pages/{pid}/p{idx}.png", "scale": _scale_json("", w, h), "c": 0,
+                          "img": f"/pages/{pid}/p{idx}.png", "scale": _scale_json(page.get_text(), w, h, field=False), "c": 0,
                           "max_z": native_z(page), "src": {"pdf": stored, "page": i}})
         doc.close()
     proj = {"id": pid, "name": clean_label(Path(entries[0][0]).stem), "engineer": "", "rev": "", "status": "Uploaded",
@@ -346,6 +346,30 @@ def ai_read_markups(pid):
     doc["pages"][str(n)] = {**res, "read": int(time.time())}
     st.doc_put("ai", pid, doc)
     return jsonify(page=n, sheet=res["sheet"], found=len(res["entries"]), skipped=False, area_only=bool(box and res.get("legend_box") == box))
+
+
+@app.post("/api/project/<pid>/scale")
+def detect_scale(pid):
+    """Read the scale a sheet states. Printed text is read for free; a flattened sheet (picture only) goes to the AI, which only
+    transcribes the words it sees. The ratio is then worked out by the same rules as above and a person still confirms it."""
+    p, n = _uploaded(pid)
+    pdf, idx = page_source(pid, n)
+    page = p["pages"][n - 1]
+    doc = fitz.open(pdf)
+    try:
+        text = doc[idx].get_text()
+    finally:
+        doc.close()
+    by = "text"
+    if not find_scale(text):
+        try:
+            text, by = reader.read_scale_text(pdf, idx), "ai"
+        except reader.ReaderError as exc:
+            return jsonify(error=str(exc)), 502
+    sc = _scale_json(text, page["w"], page["h"], field=False)
+    if by == "ai" and sc["ratio"]:
+        sc["src"] = "read from the sheet by AI: " + sc["src"]
+    return jsonify(page=n, by=by, found=bool(sc["ratio"]), scale=sc)
 
 
 @app.put("/api/project/<pid>/label")

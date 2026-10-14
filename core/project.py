@@ -47,8 +47,9 @@ def render_pages(pdf, out_dir, zoom=2):
     return sizes
 
 
-def _scale_json(text, w, h):
-    r = effective_scale(text, w, h)
+def _scale_json(text, w, h, field=True):
+    """field=True: text is a scale cell (sample meta). False: text is everything printed on the page."""
+    r = effective_scale(text, w, h, field)
     status = {"auto": "ok", "needs_check": "check", "unknown": "unknown"}[r.status]
     # even a clean 'auto' result still waits for a human; only confirmation makes it ok
     status = "check" if status == "ok" else status

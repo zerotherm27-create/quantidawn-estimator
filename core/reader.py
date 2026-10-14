@@ -236,6 +236,28 @@ def _json_object(text):
     return None
 
 
+SCALE_SYSTEM = (
+    "You transcribe text from construction plan sheets. Respond with ONLY valid JSON: "
+    '{"scales": ["text exactly as printed, e.g. Scale 1:100"], "page_size": "text exactly as printed, e.g. PAGE SIZE - A2, or null"}. '
+    "scales: every drawing scale printed on the sheet, usually just under a drawing title (GROUND FLOOR PLAN / Scale 1:100) or in "
+    "the title block. Copy each exactly as printed, with its 'Scale' word and any 'at A1' or '@ A3' that goes with it. "
+    "Do NOT include slopes, falls, pitches or gradients that also look like 1:100 (for example 'fall away from house 1:100'), "
+    "dimensions, or the graphic bar scale. If the sheet says 'Not to scale', 'NTS' or 'As indicated' and gives no ratio, return an empty list. "
+    "page_size: any statement of the sheet's paper size (for example 'PAGE SIZE - A2' or 'A1 SHEET'), else null. "
+    "Never guess: only transcribe what you can read clearly."
+)
+
+
+def read_scale_text(pdf_path, index):
+    """The scale statements printed on a flattened sheet, as one string. The AI only transcribes: the ratio is worked out by
+    core.scale from these words, and a person confirms it."""
+    data = _post(SCALE_SYSTEM, page_image(pdf_path, index, long_edge=2600),
+                 "Transcribe the scale statements and the page size statement on this sheet.", max_tokens=400)
+    scales = [str(x)[:60] for x in (data.get("scales") or []) if isinstance(x, (str, int, float))][:6]
+    size = data.get("page_size")
+    return "\n".join(scales + ([str(size)[:60]] if isinstance(size, str) else []))
+
+
 def read_full_page(pdf_path, index):
     """The whole page in one image: {sheet, entries, legend_box}."""
     data = _post(SYSTEM, page_image(pdf_path, index), "Extract the legend entries from this page.")
