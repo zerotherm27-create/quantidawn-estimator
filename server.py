@@ -389,7 +389,14 @@ def put_state(pid):
     data = request.get_json(force=True, silent=True)
     if not isinstance(data, dict):
         return jsonify(error="bad state"), 400
+    base = data.pop("base", None)           # the `saved` stamp this browser last loaded or wrote
+    force = bool(data.pop("force", False))
+    cur = get_store().doc_get("state", pid)
+    if not force and base is not None and cur and abs(float(cur.get("saved", 0)) - float(base)) > 1e-6:
+        # someone else saved since this browser loaded: refuse rather than silently replace their work
+        return jsonify(error="conflict", saved=cur.get("saved"), by=cur.get("by", "")), 409
     data["saved"] = time.time()
+    data["by"] = g.user or ""
     get_store().doc_put("state", pid, data)
     return jsonify(ok=True, saved=data["saved"])
 
