@@ -194,8 +194,8 @@ def from_json(lj):
                     length=n.get("L"), width=n.get("W"), height=n.get("H"), calc=lj["calc"],
                     status="Verified" if lj.get("st") == "ok" else "PENDING", k=n.get("K"),
                     kind=lj.get("kind", ""), element=lj.get("el", -1), rate=lj.get("rate"), rate_source=lj.get("rate_source") or "",
-                    labour_hours=lj.get("lhpu"), labour_rate=lj.get("lrate"))
-    if lj["calc"] != "pt" and n.get("N") not in (None, 1):
+                    labour_hours=lj.get("lhpu"), labour_rate=lj.get("lrate"), openings=n.get("O"), factor=n.get("R"))
+    if lj["calc"] not in ("pt", "bar") and n.get("N") not in (None, 1):
         t.count = n["N"]
     if n.get("A") is not None:
         t.area = n["A"]
@@ -206,6 +206,8 @@ def from_json(lj):
     elif u == "m":
         t.length = q if t.length is None else t.length
     elif u == "tons":
+        t.count = q
+    elif u == "each":
         t.count = q
     return t
 

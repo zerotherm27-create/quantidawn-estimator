@@ -21,7 +21,9 @@ class TakeoffLine:
     kind: str = ""            # element kind: strip_footing, pad_footing, slab_on_ground ...
     element: int = -1         # index of the legend entry / measured element this line derives from
     calc: str = ""            # prism | plan | edge | face2 | len | pt  (see core/calc.py)
-    k: Optional[float] = None # kg per m2 for post-tension lines
+    k: Optional[float] = None # kg per m2 for post-tension lines, kg per m for bar lines
+    openings: Optional[float] = None  # m2 taken off a wall area (doors, windows) by the wall calc
+    factor: Optional[float] = None    # a per-unit multiplier (bricks per m2, screws per m); 1 when absent
     rate: Optional[float] = None  # unit rate, only when pricing is switched on for the project
     rate_source: str = ""        # where that rate came from (price list entry, accepted, typed by hand)
     labour_hours: Optional[float] = None   # labour hours per unit of quantity

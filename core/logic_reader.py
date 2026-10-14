@@ -71,6 +71,23 @@ def read_embedded(pdf, index):
         doc.close()
 
 
+def has_markup(pdf, index, min_pct=0.3, long_edge=1000):
+    """Free, local test: does the sheet carry any coloured markup? Cover sheets, notes and plain drawings do not, and need no
+    AI reading. Measured on the samples, sheets with a legend have at least 0.5% saturated pixels, unmarked ones 0.1-0.3%."""
+    doc = fitz.open(pdf)
+    try:
+        page = doc[index]
+        z = long_edge / max(page.rect.width, page.rect.height)
+        pix = page.get_pixmap(matrix=fitz.Matrix(z, z), alpha=False)
+        img = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w, 3)
+    finally:
+        doc.close()
+    f = img.astype(np.float32) / 255
+    mx = f.max(2)
+    d = mx - f.min(2)
+    return float(((d / np.maximum(mx, 1e-6) > 0.35) & (mx > 0.3)).mean()) * 100 >= min_pct
+
+
 def _erode(m):
     e = np.zeros_like(m)
     e[1:-1, 1:-1] = m[1:-1, 1:-1] & m[:-2, 1:-1] & m[2:, 1:-1] & m[1:-1, :-2] & m[1:-1, 2:]

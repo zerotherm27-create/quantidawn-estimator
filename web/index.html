@@ -614,19 +614,24 @@ const MEAS={}, TOOL={on:false,pts:[]}, SELS={el:null,idx:null};   // MEAS is key
 let DRAG=null;
 const MT_NAME={len:"length",area:"area",count:"count"};
 const base=n=>n.A!=null?n.A:(n.L||0)*(n.W||0)*(n.N==null?1:n.N);
-function qty(l){const n=l.n,H=n.H||0;
+function qty(l){const n=l.n,H=n.H||0,r=n.R!=null?n.R:1;
   switch(l.calc){
     case "prism":return base(n)*H;
     case "plan":return base(n);
-    case "edge":return (n.L||0)*H;
+    case "edge":return (n.L||0)*H*r;
+    case "wall":return ((n.L||0)*H-(n.O||0))*r;
     case "face2":return (n.L||0)*2*H;
-    case "len":return n.L||0;
-    case "pt":return (n.A||0)*(n.K||0)/1000;
+    case "len":return (n.L||0)*r;
+    case "each":return (n.N==null?1:n.N)*(n.H!=null?n.H:1);
+    case "pt":case "bar":return (n.A||0)*(n.K||0)/1000;
   }return l.q}
-function dmOf(l){const n=l.n,f=v=>fmt(v);
+function dmOf(l){const n=l.n,f=v=>fmt(v),rt=n.R!=null&&n.R!==1?` x ${f(n.R)}`:"";
   if(l.calc==="pt")return `${f(n.A||0)} m2 x ${n.K} kg/m2`;
-  if(l.calc==="len")return `${f(n.L||0)} m`;
-  if(l.calc==="edge")return `${f(n.L||0)} m x ${f(n.H||0)}`;
+  if(l.calc==="bar")return `${f(n.A||0)} m of bar x ${n.K} kg/m`;
+  if(l.calc==="len")return `${f(n.L||0)} m${rt}`;
+  if(l.calc==="edge")return `${f(n.L||0)} m x ${f(n.H||0)}${rt}`;
+  if(l.calc==="wall")return `(${f(n.L||0)} x ${f(n.H||0)}${n.O?" - "+f(n.O)+" openings":""})${rt}`;
+  if(l.calc==="each")return n.H!=null?`${n.N==null?1:n.N} x ${f(n.H)} m`:`${n.N==null?1:n.N} each`;
   if(l.calc==="face2")return `${f(n.L||0)} x 2 x ${f(n.H||0)}`;
   if(n.A!=null)return `${f(n.A)} m2${l.calc==="prism"?" x "+f(n.H||0):""}`;
   const parts=[f(n.L||0),f(n.W||0)];if(l.calc==="prism")parts.push(f(n.H||0));
@@ -874,7 +879,7 @@ function renderDrawer(){
    <div><h3>${esc(l.mk)}, ${esc(l.ds)}</h3>
      <div class="basis">basis <b>${l.basis}</b><br>result <b>${fmt(l.q)} ${l.u}</b> &middot; ${MEAS[l.el]&&MEAS[l.el].length?`<b>measured on plan</b> (${MEAS[l.el].length} shape${MEAS[l.el].length>1?"s":""})<a class="mlink" id="clrM">clear</a>`:(l.el<0?"added by the AI":"from sheet "+SHEETS[l.sheet-1].n+" legend")}</div></div>
    <div class="fld">
-     ${[["Length","L"],["Width","W"],["Height","H"],["Area","A"],["Count","N"],["kg/m2","K"]].filter(([t,k])=>l.n[k]!=null&&!(k==="N"&&l.mt!=="count"&&l.n.N===1)).map(([t,k])=>`<label>${t}<input class="num" data-k="${k}" value="${l.n[k]}" inputmode="decimal"></label>`).join("")}
+     ${[["Length","L"],["Width","W"],["Height","H"],["Area","A"],["Count","N"],[l.calc==="bar"?"kg/m":"kg/m2","K"],["Openings","O"],["Factor","R"]].filter(([t,k])=>l.n[k]!=null&&!(k==="N"&&l.mt!=="count"&&l.n.N===1)).map(([t,k])=>`<label>${t}<input class="num" data-k="${k}" value="${l.n[k]}" inputmode="decimal"></label>`).join("")}
    </div>
    <div class="acts">
      <button class="btn ${l.st==="ok"?"":"primary"}" id="vf" ${l.st!=="ok"&&(!scaleOk(l.sheet-1)||l.ag==="disputed"||l.ag==="ai_only")?"disabled title=\"Resolve the scale and any AI disagreement first\"":""}>${l.st==="ok"?"Unverify":"Verify line"} <span class="kbd">V</span></button>
@@ -1250,11 +1255,12 @@ const IS_POP=new URLSearchParams(location.search).has("plan");
 const ME=Math.random().toString(36).slice(2);
 const BC=typeof BroadcastChannel!=="undefined"?new BroadcastChannel("qd-"+PID+(DEMO_AI?"-demo":"")):null;
 let popWin=null,popTimer=null,REMOTE=false,syncT=null;
+const fp=l=>l.ds+"|"+l.calc+"|"+l.u;   // what a line is, so saved edits are not applied to a different line that now has its id
 function buildState(){
   return {v:2,sel:st.sel,page:V.page,meas:MEAS,
     scales:SCALES.map(x=>({ratio:x.ratio,status:x.status,src:x.src,note:x.note})),
     pricing:{on:PRICING.on,list:PRICING.list,pct:PRICING.pct,currency:PRICING.currency,labourRate:PRICING.labourRate},
-    lines:LINES.map(l=>({id:l.id,n:l.n,q:l.q,dm:l.dm,st:l.st,src2:l.src2,orig:l.orig,ag:l.ag==="resolved"?"resolved":undefined,rate:l.rate,lhpu:l.lhpu,lrate:l.lrate,pm:l.pm,pm0:l.pm0}))}}
+    lines:LINES.map(l=>({id:l.id,f:fp(l),n:l.n,q:l.q,dm:l.dm,st:l.st,src2:l.src2,orig:l.orig,ag:l.ag==="resolved"?"resolved":undefined,rate:l.rate,lhpu:l.lhpu,lrate:l.lrate,pm:l.pm,pm0:l.pm0}))}}
 function scheduleSync(){
   if(!BC||REMOTE||!PROJ)return;
   clearTimeout(syncT);syncT=setTimeout(()=>BC.postMessage({type:"state",from:ME,doc:JSON.parse(JSON.stringify(buildState()))}),60)}
@@ -1379,7 +1385,7 @@ function applyState(d,live){
   if(live)Object.keys(MEAS).forEach(k=>delete MEAS[k]);          // a live update replaces the shapes, it does not add to them
   Object.keys(d.meas||{}).forEach(k=>MEAS[k]=d.meas[k]);
   (d.scales||[]).forEach((x,i)=>{if(SCALES[i])Object.assign(SCALES[i],x)});
-  (d.lines||[]).forEach(x=>{const l=LINES.find(y=>y.id===x.id);if(l){l.n=x.n;l.q=x.q;l.dm=x.dm;l.st=x.st;l.src2=x.src2;if(x.ag==="resolved"){l.ag="resolved";l.agr=""}if(x.orig)l.orig=x.orig;if(x.pm){l.pm=x.pm;l.pm0=x.pm0;l.rate=x.rate==null?null:x.rate;l.lhpu=x.lhpu==null?null:x.lhpu;l.lrate=x.lrate==null?null:x.lrate}}});
+  (d.lines||[]).forEach(x=>{const l=LINES.find(y=>y.id===x.id);if(l&&(x.f==null||x.f===fp(l))){l.n=x.n;l.q=x.q;l.dm=x.dm;l.st=x.st;l.src2=x.src2;if(x.ag==="resolved"){l.ag="resolved";l.agr=""}if(x.orig)l.orig=x.orig;if(x.pm){l.pm=x.pm;l.pm0=x.pm0;l.rate=x.rate==null?null:x.rate;l.lhpu=x.lhpu==null?null:x.lhpu;l.lrate=x.lrate==null?null:x.lrate}}});
   if(d.pricing){PRICING.on=!!d.pricing.on;PRICING.list=d.pricing.list||null;Object.assign(PRICING.pct,d.pricing.pct||{});PRICING.currency=d.pricing.currency||"AUD";PRICING.labourRate=d.pricing.labourRate==null?null:d.pricing.labourRate}
   if(d.sel&&LINES.some(l=>l.id===d.sel))st.sel=d.sel;
   if(live)return;
@@ -1496,17 +1502,30 @@ if(IS_POP){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on'
 async function readSheets(kind,btn){
   const total=SHEETS.length,msg=()=>document.getElementById("readMsg"),all=[...document.querySelectorAll(kind==="ai"?"#aiBtn":"[data-read],#readBtn")];
   const label=kind==="ai"?"AI check":"Read markups",busy=t=>all.forEach(b=>{b.disabled=!!t;b.textContent=t||label});
-  let found=0,measured=0,sources=new Set(),notes=[];
+  let sheets=Array.from({length:total},(_,i)=>i+1),forced=false;
+  if(kind==="ai"){      // the AI is paid by use: let a person name the sheets, and skip the ones with no markup
+    const ans=prompt(`Which sheets should the AI read? Type sheet numbers (for example 5,7,13), or leave empty to read every sheet that has coloured markup. Sheets without markup are skipped, which saves cost. Sheets are numbered 1 to ${total}.`,"");
+    if(ans===null)return;
+    if(ans.trim()){
+      const picked=[...new Set(ans.split(/[\s,;]+/).map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=total))];
+      if(!picked.length){alert(`No valid sheet numbers. Sheets are numbered 1 to ${total}.`);return}
+      sheets=picked;forced=true;
+    }
+  }
+  let found=0,measured=0,sources=new Set(),notes=[],skipped=[];
   try{
     if(kind!=="ai")await fetch(`/api/project/${PID}/read`,{method:"DELETE"});
-    for(let n=1;n<=total;n++){
-      busy(`${kind==="ai"?"AI reading":"Reading"} sheet ${n} of ${total}...`);
-      const r=await fetch(`/api/project/${PID}/${kind==="ai"?"ai":"read"}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:n,ratio:(SCALES[n-1]||{}).ratio})});
+    for(const [i,n] of sheets.entries()){
+      busy(`${kind==="ai"?"AI reading":"Reading"} sheet ${n} (${i+1} of ${sheets.length})...`);
+      const r=await fetch(`/api/project/${PID}/${kind==="ai"?"ai":"read"}`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:n,ratio:(SCALES[n-1]||{}).ratio,force:forced})});
       let j={};try{j=await r.json()}catch(e){}
       if(!r.ok)throw new Error(j.error||"Could not read sheet "+n);
+      if(j.skipped){skipped.push(n);continue}
       found+=j.found||0;measured+=j.measured||0;if(j.source)sources.add(j.source);if(j.note)notes.push(j.note);
     }
-    if(!found&&!measured){busy(0);const t=notes[0]||"Nothing could be read from these sheets.";if(msg())msg().textContent=t;else alert(t);return}
+    const skipNote=skipped.length?`Skipped without reading (no coloured markup): sheet${skipped.length>1?"s":""} ${skipped.join(", ")}. To read one anyway, run AI check again and type its number.`:"";
+    if(!found&&!measured){busy(0);const t=skipNote||notes[0]||"Nothing could be read from these sheets.";if(msg())msg().textContent=t;else alert(t);return}
+    if(skipNote)alert(skipNote);
     location.reload();
   }catch(e){busy(0);if(msg())msg().textContent=e.message;else alert(e.message)}
 }
