@@ -132,7 +132,7 @@ def merge_reconcile(lines_json, logic, ai):
             lines_json.append(ln)
 
 
-def apply_entries(proj, doc, ai_doc=None, labels=None, merges=None):
+def apply_entries(proj, doc, ai_doc=None, labels=None, merges=None, items=None):
     """Build an uploaded project's lines from what logic read: legend rows (text or annotations) through the same rules
     as the samples, plus colour-measured groups. An AI reading is only a cross-check, unless logic found no legend at all."""
     labels = labels or {}
@@ -142,7 +142,7 @@ def apply_entries(proj, doc, ai_doc=None, labels=None, merges=None):
     ai_primary = bool(ai_flat) and not flat
     if ai_primary:
         flat, page_of = _flatten(ai_doc)
-    if not flat and not measures:
+    if not flat and not measures and not items:
         return proj
     # two workbook conventions exist (see PROFILES): use the one whose rules understand more of this legend, the project's own on a tie
     name, lines, skipped = proj["profile"], [], []
@@ -186,12 +186,22 @@ def apply_entries(proj, doc, ai_doc=None, labels=None, merges=None):
             lj["mem"] = merges[key]
         out.append(lj)
         counts[n] = counts.get(n, 0) + 1
+    for it in items or []:                                   # takeoff items a person made: measured on the plan, drawn in their own colour
+        kind = it["kind"]
+        t = TakeoffLine("MY TAKEOFF", it["name"].upper()[:24], it["name"], {"len": "m", "area": "m2", "count": "each"}[kind],
+                        length=0 if kind == "len" else None, area=0 if kind == "area" else None, count=0 if kind == "count" else None,
+                        kind=f"item_{kind}", element=2000 + it["id"], calc={"len": "len", "area": "plan", "count": "each"}[kind])
+        lj = line_json(len(out) + 1, t, 1, None, profile)
+        lj.update(hex=it["color"], it=it["id"], st="pn")
+        out.append(lj)
     p = copy.deepcopy(proj)
     for i, pg in enumerate(p["pages"], 1):
         pg["c"] = counts.get(i, 0)
     groups = [g for g in group_order(profile) if any(x["g"] == g for x in out)] if lines else []
     if measures:
         groups.append("MARKUPS TO IDENTIFY")
+    if items:
+        groups.append("MY TAKEOFF")
     ai_note = ("AI reading used for the legend (no embedded text found); " if ai_primary else
                ("AI cross-check run" if ai_doc and ai_flat else "not run"))
     p.update(profile=name, lines=out, skipped=[f"{d}: {why}" for d, why in skipped], message="", groups=groups or group_order(profile),

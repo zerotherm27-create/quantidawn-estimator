@@ -43,7 +43,7 @@ def qty(calc, n):
 
 MEASURE_OF = {  # how an element is measured on the plan
     "res_len": "len", "res_area": "area", "res_count": "count",
-    "strip_footing": "len", "markup_len": "len", "wall": "len", "hob": "len", "edge_form": "len", "joint": "len",
+    "strip_footing": "len", "markup_len": "len", "item_len": "len", "item_area": "area", "item_count": "count", "wall": "len", "hob": "len", "edge_form": "len", "joint": "len",
     "pad_footing": "count", "column": "count",
     "raft_footing": "area", "bulk_excavation": "area", "slab_on_ground": "area", "ramp_slab": "area",
     "sand_blinding": "area", "poly_membrane": "area", "pt_slab": "area",
