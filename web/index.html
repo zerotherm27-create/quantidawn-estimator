@@ -108,6 +108,7 @@ main{min-width:0;display:flex;flex-direction:column}
 .step b{font-weight:500;display:block;margin-bottom:2px}
 .step span{color:var(--ink-2);font-size:13px}
 .step i{font:500 12px var(--mono);color:var(--accent);padding-top:2px}
+[hidden]{display:none!important}
 .recent{margin-top:4px}
 .recent a{display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:13px;cursor:pointer;transition:padding .25s var(--ease)}
 .recent a:hover{padding-left:6px}
@@ -1500,12 +1501,16 @@ if(IS_POP){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on'
     {t:"Welcome",b:"A quick tour of the buttons. Rules measure first, AI cross-checks, and you verify last. It takes under a minute."},
     {view:"upload",sel:"#pickPdf",t:"Upload plans",b:"Choose one or more plan PDFs. Each page is read and its scale is detected from the title block."},
     {sel:'[data-go="upload"]',t:"Projects",b:"Switch between projects, or start a new one by uploading plans."},
+    {view:"upload",sel:".recent",t:"Archive finished jobs",b:"Archive moves a finished project out of the Active list. Nothing is deleted, and it stays fully editable. Open the Archived tab any time to find it again or Restore it."},
     {view:"review",sel:'[data-go="review"]',t:"Takeoff",b:"The working screen: your lines on the left, the plan on the right. Pick a line, then draw it on the plan."},
     {sel:"#scEnt",t:"Scale",b:"Each sheet's scale must be confirmed before you can measure. Confirm the detected scale, or type your own."},
+    {view:"review",sel:"#readBtn",t:"Read markups",b:"Pulls the legend quantities off the marked-up plans using the app's own rules, no AI. Each result still needs your check."},
+    {sel:"#aiBtn",t:"AI check",b:"A real second opinion: lines the AI disagrees with are flagged for you to look at first. It never changes a quantity. Needs the AI service to be set up."},
     {sel:"#popBtn",t:"Pop out",b:"Opens the plan in its own window for a second screen. Both windows stay in sync."},
     {sel:'[data-go="pricing"]',t:"Pricing (optional)",b:"Only when the client wants costs: load a price list and rates are matched to lines. Off by default."},
     {sel:"#shareBtn",t:"Share link",b:"Creates a private download link for the client, with an expiry. They need no account."},
     {sel:"#exportBtn",t:"Export workbook",b:"Downloads the takeoff with live formulas. To use a client's own Excel instead, use Fill template."},
+    {sel:"#nameBtn",t:"Your name",b:"Set the name your teammates see on projects and shared links, instead of your email."},
     {sel:"#helpBtn",t:"Need this again?",b:"Press this ? button any time to replay the tour."}
   ];
   const root=document.getElementById("tour");if(!root)return;
