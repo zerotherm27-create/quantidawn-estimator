@@ -188,9 +188,13 @@ def apply_entries(proj, doc, ai_doc=None, labels=None, merges=None, items=None):
         counts[n] = counts.get(n, 0) + 1
     for it in items or []:                                   # takeoff items a person made: measured on the plan, drawn in their own colour
         kind = it["kind"]
-        t = TakeoffLine("MY TAKEOFF", it["name"].upper()[:24], it["name"], {"len": "m", "area": "m2", "count": "each"}[kind],
-                        length=0 if kind == "len" else None, area=0 if kind == "area" else None, count=0 if kind == "count" else None,
-                        kind=f"item_{kind}", element=2000 + it["id"], calc={"len": "len", "area": "plan", "count": "each"}[kind])
+        size = it.get("size")                                # wall height or volume depth, in metres: edited later in the drawer
+        t = TakeoffLine("MY TAKEOFF", it["name"].upper()[:24], it["name"], {"len": "m", "area": "m2", "count": "each", "wall": "m2", "vol": "m3"}[kind],
+                        length=0 if kind in ("len", "wall") else None, area=0 if kind in ("area", "vol") else None,
+                        count=0 if kind == "count" else None, height=size if kind in ("wall", "vol") else None,
+                        openings=0 if kind == "wall" else None,
+                        kind=f"item_{kind}", element=2000 + it["id"],
+                        calc={"len": "len", "area": "plan", "count": "each", "wall": "wall", "vol": "prism"}[kind])
         lj = line_json(len(out) + 1, t, 1, None, profile)
         lj.update(hex=it["color"], it=it["id"], st="pn")
         out.append(lj)

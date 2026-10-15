@@ -199,11 +199,14 @@ tr.l.sel td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 .idlg .box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;width:min(420px,calc(100vw - 32px));box-shadow:0 12px 40px rgba(24,24,27,.22)}
 .idlg h3{margin:0 0 12px;font-size:16px}.idlg label{display:block;font-size:12px;color:var(--ink-3);margin:10px 0 4px}
 .idlg input[type=text]{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
-.idlg .seg{display:flex;gap:6px}.idlg .seg button{flex:1;padding:8px 6px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink-2);cursor:pointer;font:inherit;font-size:12.5px}
+.idlg .seg{display:flex;gap:6px;flex-wrap:wrap}.idlg .seg button{flex:1 1 28%;padding:8px 6px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink-2);cursor:pointer;font:inherit;font-size:12.5px}
 .idlg .seg button.on{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
 .idlg .act{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
 .sw{display:inline-block;width:20px;height:20px;border-radius:6px;margin:2px 4px 2px 0;cursor:pointer;border:2px solid transparent;vertical-align:middle}.sw.on{border-color:var(--ink)}
 .itact{margin-top:8px}
+.opn{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--ink-3)}
+.opn input{width:64px;padding:5px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+.idlg .sz{display:none}.idlg .sz.on{display:block}
 tr.l.pick td{background:var(--accent-soft)}
 tr.l.pick td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 td.mk{font:500 12px var(--mono);width:78px;max-width:112px;overflow:hidden;text-overflow:ellipsis}
@@ -699,10 +702,15 @@ function newItemDialog(){
   const d=document.createElement("div");d.className="idlg";
   const paint=()=>{
     d.querySelectorAll("[data-k]").forEach(b=>b.classList.toggle("on",b.dataset.k===kind));
+    const sz=d.querySelector("#idSz");sz.classList.toggle("on",kind==="wall"||kind==="vol");
+    if(kind==="wall"||kind==="vol"){const inp=d.querySelector("#idSize"),want=kind==="wall"?"2.4":"0.1";
+      if(inp.dataset.k!==kind){inp.value=want;inp.dataset.k=kind}
+      d.querySelector("#idSizeLbl").textContent=kind==="wall"?"Wall height (m)":"Depth or thickness (m)"}
     d.querySelectorAll(".sw").forEach(b=>b.classList.toggle("on",b.dataset.c===color))};
   d.innerHTML=`<div class="box" role="dialog" aria-label="New takeoff item"><h3>New takeoff item</h3>
     <label for="idName">What are you measuring?</label><input type="text" id="idName" maxlength="40" placeholder="External wall, slab, power points..." autocomplete="off">
-    <label>Measured as</label><div class="seg"><button data-k="len">Length (m)</button><button data-k="area">Area (m&sup2;)</button><button data-k="count">Count (each)</button></div>
+    <label>Measured as</label><div class="seg"><button data-k="len">Length (m)</button><button data-k="area">Area (m&sup2;)</button><button data-k="count">Count (each)</button><button data-k="wall" title="Measure along the wall; the app multiplies by its height and takes off openings">Wall area (m&sup2;)</button><button data-k="vol" title="Measure the area; the app multiplies by its depth">Volume (m&sup3;)</button></div>
+    <div class="sz" id="idSz"><label for="idSize" id="idSizeLbl">Wall height (m)</label><input type="text" id="idSize" inputmode="decimal" value="2.4"></div>
     <label>Colour on the plan</label><div>${ITEM_COLORS.map(c=>`<i class="sw" data-c="${c}" style="background:${c}"></i>`).join("")}</div>
     <div class="act"><button class="btn" id="idCancel">Cancel</button><button class="btn primary" id="idOk">Create and measure</button></div></div>`;
   document.body.appendChild(d);paint();
@@ -715,12 +723,16 @@ function newItemDialog(){
   d.addEventListener("keydown",e=>{if(e.key==="Escape")close();if(e.key==="Enter")ok()});
   async function ok(){
     const nm=name.value.trim();if(!nm){name.focus();return}
-    try{const j=await itemRequest({add:{name:nm,kind,color}});
+    const body={name:nm,kind,color};
+    if(kind==="wall"||kind==="vol"){const v=parseFloat(d.querySelector("#idSize").value.replace(",","."));
+      if(!(v>0)){d.querySelector("#idSize").focus();return}body.size=v}
+    try{const j=await itemRequest({add:body});
       try{sessionStorage.setItem("qd-new-item",String(j.items[j.items.length-1].id))}catch(e){}
       location.reload()}catch(e){alert(e.message)}}
 }
 function itemActions(l){
-  return `<div class="itact">${ITEM_COLORS.map(c=>`<i class="sw ${c===l.hex?"on":""}" data-itc="${c}" title="Change colour" style="background:${c}"></i>`).join("")}<a class="mlink" id="itDel">Delete item</a></div>`}
+  const opn=l.calc==="wall"?`<div class="opn">Take off openings: <input id="opN" inputmode="numeric" value="1" aria-label="How many"> &times; <input id="opW" inputmode="decimal" value="0.82" aria-label="Width in metres"> m wide &times; <input id="opH" inputmode="decimal" value="2.04" aria-label="Height in metres"> m high <button class="btn" id="opAdd">Deduct</button></div>`:"";
+  return opn+`<div class="itact">${ITEM_COLORS.map(c=>`<i class="sw ${c===l.hex?"on":""}" data-itc="${c}" title="Change colour" style="background:${c}"></i>`).join("")}<a class="mlink" id="itDel">Delete item</a></div>`}
 function renderItemLegend(){
   const pl=$("#plan");if(!pl)return;
   let el=$("#itemLeg");
@@ -1060,12 +1072,12 @@ function renderDrawer(){
    ${PRICING.on?rateBox(l):""}
    ${l.agr&&(l.ag==="disputed"||l.ag==="ai_only"||l.ag==="unconfirmed")?`<div class="aibox"><div><b>${l.ag==="unconfirmed"?"AI could not confirm this line":"AI disagrees"}</b><span>${l.agr}</span></div>${l.ag==="unconfirmed"?"":`<div class="acts2"><button class="btn" id="keepL">Keep logic value</button><button class="btn" id="useAI">Use AI value (${fmt(l.aiq)})</button></div>`}</div>`:""}
    <div class="note" ${l.note||!scaleOk(l.sheet-1)?"":"hidden"}><svg class="i" viewBox="0 0 16 16"><path d="M8 2.500l6 10.500H2z M8 7v2.500M8 11.200v.1"/></svg><span>${l.note||""}${!scaleOk(l.sheet-1)?(l.note?" ":"")+"Sheet "+SHEETS[l.sheet-1].n+" scale is unconfirmed, so this line cannot be verified yet.":""}</span></div>`;
-  $$("#drawer input").forEach(i=>i.addEventListener("input",()=>{
+  $$("#drawer input[data-k]").forEach(i=>i.addEventListener("input",()=>{      // only the dimension fields, not the rate or opening inputs
     l.n[i.dataset.k]=parseFloat(i.value)||0;l.orig=l.orig||null;
     l.q=qty(l);l.dm=dmOf(l);
     if(l.st==="ok")l.st="pn";
     $("#drawer .basis b:last-of-type").textContent=fmt(l.q)+" "+l.u;
-    renderTable();renderChips();renderSummary();
+    renderTable();renderChips();renderSummary();renderItemLegend();
   }));
   $("#vf").onclick=()=>{l.st=l.st==="ok"?"pn":"ok";renderAll()};
   const readNum=id=>{const e=$(id);if(!e||e.value.trim()==="")return null;const v=parseFloat(e.value);return isNaN(v)||v<0?null:v};
@@ -1315,7 +1327,7 @@ function renderTabs(){
   const pb=$("#popBtn");if(pb)pb.onclick=openPop;
   $("#legend").innerHTML=`<span>${PROJ&&PROJ.sample?"Sample sheets are the estimator's marked-up PDF. A real job shows the clean drawing.":(PROJ?PROJ.ai:"")}</span><span style="margin-left:auto" class="num hide-m">drag to pan, scroll to zoom, double-click to fit</span>`;
 }
-function renderAll(){renderTabs();renderChips();renderSummary();renderTable();renderDrawer();renderPlan();applyFocus();renderPopBar();scheduleSave()}
+function renderAll(){renderTabs();renderChips();renderSummary();renderTable();renderDrawer();renderPlan();applyFocus();renderPopBar();renderItemLegend();scheduleSave()}
 
 
 let TPL=null;
@@ -1776,6 +1788,12 @@ async function readSheets(kind,btn){
 document.addEventListener("click",e=>{
   if(e.target.closest("[data-newitem]"))return newItemDialog();
   const sw=e.target.closest(".sw[data-itc]");if(sw){const l=curLine();if(l&&l.it)itemRequest({recolor:{id:l.it,color:sw.dataset.itc}}).then(()=>location.reload()).catch(x=>alert(x.message));return}
+  if(e.target.id==="opAdd"){
+    const l=curLine(),num=id=>parseFloat(String($(id).value).replace(",","."));
+    const n=num("#opN"),w=num("#opW"),h=num("#opH");
+    if(!l||!(n>0&&w>0&&h>0)){alert("Enter how many, and each opening's width and height in metres.");return}
+    l.n.O=+(((l.n.O||0)+n*w*h).toFixed(4));l.q=qty(l);l.dm=dmOf(l);l.st="pn";
+    renderAll();scheduleSync();return}
   if(e.target.id==="itDel"){const l=curLine();if(l&&l.it&&confirm(`Delete the item "${l.ds}" and what was measured for it?`)){delete MEAS[l.el];itemRequest({delete:l.it}).then(()=>location.reload()).catch(x=>alert(x.message))}return}
   const b=e.target.closest("[data-read],#readBtn");if(b)return readSheets("logic",b);
   if(e.target.closest("#aiBtn"))readSheets("ai");
