@@ -635,7 +635,7 @@ let PID=QS.get("project")||"boxshall";
 const DEMO_AI=QS.has("demo_ai");
 let PROJ=null,GROUPS=[],LINES=[],SKIPPED=[],SHEETS=[],SCALES=[];
 const AG_PRI={disputed:0,ai_only:1,unconfirmed:2,unrun:3,agreed:3,resolved:3};
-const MEAS={}, TOOL={on:false,pts:[],room:false}, GEO={}, SNAP={on:true}, SELS={el:null,idx:null}, PICK=new Set(), CLEAN={on:false,pts:[]};   // PICK: colour lines ticked to combine; CLEAN: drawing a clean-up box   // MEAS is keyed by element: one drawn shape feeds every line of that element
+const MEAS={}, TOOL={on:false,pts:[],room:false,trace:false}, GEO={}, SNAP={on:true}, SELS={el:null,idx:null}, PICK=new Set(), CLEAN={on:false,pts:[]};   // PICK: colour lines ticked to combine; CLEAN: drawing a clean-up box   // MEAS is keyed by element: one drawn shape feeds every line of that element
 let DRAG=null;
 const MT_NAME={len:"length",area:"area",count:"count"};
 const base=n=>n.A!=null?n.A:(n.L||0)*(n.W||0)*(n.N==null?1:n.N);
@@ -683,6 +683,7 @@ function liveText(){
   const m=mPerPt(),p=TOOL.pts;
   const v=l.mt==="len"?lenPt(p)*m:l.mt==="area"?(p.length>2?areaPt(p)*m*m:0):p.length;
   const u=l.mt==="len"?"m":l.mt==="area"?"m2":"";
+  if(TOOL.trace)return `Measuring <b>${l.mk}</b>: click a wall to take its straight run. Each click adds one line.<br>Delete a wrong one by selecting it. Esc ends`;
   if(TOOL.room)return `Measuring <b>${l.mk}</b>: click inside a room to take its outline.<br>Door openings are fine. Drag its corners afterwards to adjust. Esc cancels`;
   const how=l.mt==="count"?"Click each item":l.mt==="len"?"Click along the run, double-click to finish":"Click corners, double-click to close";
   return `Measuring <b>${l.mk}</b> by ${MT_NAME[l.mt]}: <b>${l.mt==="count"?v:v.toFixed(2)} ${u}</b><br>${how}. Esc cancels, Backspace undoes`;
@@ -771,8 +772,47 @@ function snapTo(pt){       // {pt, snapped}: an end of a wall within reach first
   const best=end||on;return best?{pt:best,snapped:true}:{pt,snapped:false}}
 function showSnap(e,pt){
   const dot=document.getElementById("snapDot");if(!dot)return;
-  const sn=TOOL.on&&!TOOL.room&&!e.shiftKey?snapTo(pt):{snapped:false};
+  const prev=document.getElementById("tracePrev");
+  if(prev){const g=GEO[V.page],run=TOOL.on&&TOOL.trace&&g?traceRun(g.segs,pt,10/V.k):null;
+    if(run){prev.setAttribute("x1",run[0][0]);prev.setAttribute("y1",run[0][1]);prev.setAttribute("x2",run[1][0]);prev.setAttribute("y2",run[1][1]);prev.setAttribute("stroke-width",(4/V.k).toFixed(2))}else prev.setAttribute("stroke-width","0")}
+  const sn=TOOL.on&&!TOOL.room&&!TOOL.trace&&!e.shiftKey?snapTo(pt):{snapped:false};
   if(sn.snapped){dot.setAttribute("cx",sn.pt[0]);dot.setAttribute("cy",sn.pt[1]);dot.setAttribute("r",(6/V.k).toFixed(2))}else dot.setAttribute("r","0")}
+/* trace: click a wall and take its whole straight run. Walls are drawn as many short strokes, so join the collinear ones that touch.
+   TRACE_START and TRACE_END mark the pure function that tests/test_trace.py runs under node. */
+// TRACE_START
+function traceRun(segs,pt,reach){
+  const MIN_W=.4,MIN_L=6,GAP=2,TOL=.6;
+  let best=null,bd=reach;
+  for(const s of segs){
+    if(s[4]<MIN_W)continue;
+    const dx=s[2]-s[0],dy=s[3]-s[1],L=Math.hypot(dx,dy);if(L<MIN_L)continue;
+    let t=((pt[0]-s[0])*dx+(pt[1]-s[1])*dy)/(L*L);t=Math.max(0,Math.min(1,t));
+    const d=Math.hypot(s[0]+t*dx-pt[0],s[1]+t*dy-pt[1])-(s[4]>=.7?.2:0);
+    if(d<bd){bd=d;best=s}}
+  if(!best)return null;
+  const o=[best[0],best[1]],L0=Math.hypot(best[2]-best[0],best[3]-best[1]),u=[(best[2]-best[0])/L0,(best[3]-best[1])/L0];
+  const iv=[];
+  for(const s of segs){
+    if(s[4]<MIN_W||Math.abs(s[4]-best[4])>.2)continue;
+    const dx=s[2]-s[0],dy=s[3]-s[1],L=Math.hypot(dx,dy);if(L<MIN_L&&s!==best)continue;
+    if(Math.abs(u[0]*dy-u[1]*dx)/L>.02)continue;                              // not parallel
+    const off=a=>Math.abs(u[0]*(a[1]-o[1])-u[1]*(a[0]-o[0]));
+    if(off([s[0],s[1]])>TOL||off([s[2],s[3]])>TOL)continue;                    // parallel but not on the same line
+    const ta=u[0]*(s[0]-o[0])+u[1]*(s[1]-o[1]),tb=u[0]*(s[2]-o[0])+u[1]*(s[3]-o[1]);
+    iv.push([Math.min(ta,tb),Math.max(ta,tb)])}
+  iv.sort((a,b)=>a[0]-b[0]);
+  let lo=Math.min(0,L0),hi=L0;                                                // grow from the clicked segment, both ways, over touching pieces
+  let grew=true;
+  while(grew){grew=false;for(const [a,b] of iv){if(b>hi&&a<=hi+GAP){hi=b;grew=true}if(a<lo&&b>=lo-GAP){lo=a;grew=true}}}
+  return [[o[0]+u[0]*lo,o[1]+u[1]*lo],[o[0]+u[0]*hi,o[1]+u[1]*hi]]}
+// TRACE_END
+function traceAdd(pt){
+  const l=curLine(),g=GEO[V.page];if(!l||!g||!TOOL.on)return;
+  const run=traceRun(g.segs,pt,10/V.k);
+  const note=$("#tools2 .meas");
+  if(!run){if(note)note.innerHTML="No wall line there. Click right on a wall.";return}
+  (MEAS[l.el]=MEAS[l.el]||[]).push({page:V.page,kind:"len",pts:run});
+  recomputeEl(l.el);renderAll();TOOL.on=true;TOOL.trace=true;renderTools();drawOverlays()}
 async function pickRoom(pt){
   const l=curLine();if(!l||!TOOL.on)return;
   const note=$("#tools2 .meas");if(note)note.innerHTML="Finding the room...";
@@ -829,6 +869,7 @@ function renderTools(){
     :TOOL.on
     ?`<button class="btn live" id="tFin">Finish</button><button class="btn" id="tCan">Cancel</button>`
       +(GEO[V.page]&&GEO[V.page].segs.length?`<button class="btn ${SNAP.on?"live":""}" id="tSnap" title="Snap to the drawing's own lines. Hold Shift to place a point freely">Snap ${SNAP.on?"on":"off"}</button>`:"")
+      +(l&&l.mt==="len"&&GEO[V.page]&&GEO[V.page].segs.length?`<button class="btn ${TOOL.trace?"live":""}" id="tTrace" title="Click a wall to take its whole straight run in one go">Trace wall</button>`:"")
       +(l&&l.mt==="area"&&GEO[V.page]&&GEO[V.page].segs.length?`<button class="btn ${TOOL.room?"live":""}" id="tRoom" title="Click inside a closed room to take its outline">Pick room</button>`:"")
       +`<div class="meas">${liveText()}</div>`
     :`<button class="btn" id="tMeas" ${dis?"disabled":""} title="${!scaleOk(V.page)?"Confirm this sheet's scale first":"Draw on the plan to set the quantity"}"><svg class="i" viewBox="0 0 16 16"><path d="M2 12l3-3 2 2 5-6M2 14h12"/></svg>Measure ${l?l.mk+" ("+MT_NAME[l.mt]+")":""}</button>`
@@ -844,7 +885,8 @@ function renderTools(){
   const dl=$("#tDel");if(dl)dl.onclick=deleteShape;
   const c=$("#tCan");if(c)c.onclick=cancelMeasure;
   const tsn=$("#tSnap");if(tsn)tsn.onclick=()=>{SNAP.on=!SNAP.on;renderTools()};
-  const trm=$("#tRoom");if(trm)trm.onclick=()=>{TOOL.room=!TOOL.room;renderTools()};
+  const ttr=$("#tTrace");if(ttr)ttr.onclick=()=>{TOOL.trace=!TOOL.trace;TOOL.pts=[];renderTools();drawOverlays()};
+  const trm=$("#tRoom");if(trm)trm.onclick=()=>{TOOL.room=!TOOL.room;TOOL.trace=false;renderTools()};
   const tn=$("#tNew");if(tn)tn.onclick=newItemDialog;
   const tc=$("#tClean");if(tc)tc.onclick=()=>{CLEAN.on=true;CLEAN.pts=[];renderTools();drawOverlays()};
   const tcc=$("#tCleanCan");if(tcc)tcc.onclick=cancelClean;
@@ -856,8 +898,8 @@ function renderTools(){
 function startMeasure(){
   const l=curLine();if(!l||!toolOK())return;
   if(!l.it&&l.sheet-1!==V.page)setPage(l.sheet-1);
-  TOOL.on=true;TOOL.pts=[];TOOL.room=false;ensureGeo(V.page);renderTools();drawOverlays()}
-function cancelMeasure(){TOOL.on=false;TOOL.pts=[];TOOL.room=false;renderTools();drawOverlays()}
+  TOOL.on=true;TOOL.pts=[];TOOL.room=false;TOOL.trace=false;ensureGeo(V.page);renderTools();drawOverlays()}
+function cancelMeasure(){TOOL.on=false;TOOL.pts=[];TOOL.room=false;TOOL.trace=false;renderTools();drawOverlays()}
 function addPoint(pt){
   const l=curLine();if(!TOOL.on||!l)return;
   if(l.mt==="count"){(MEAS[l.el]=MEAS[l.el]||[]).push({page:V.page,kind:"count",pts:[pt]});recomputeEl(l.el);renderAll();TOOL.on=true;renderTools();drawOverlays();return}
@@ -1248,6 +1290,7 @@ function drawOverlays(){
     if(c.length===2)h+=`<line class="src" x1="${c[0][0]}" y1="${c[0][1]}" x2="${c[1][0]}" y2="${c[1][1]}" stroke="var(--accent)" stroke-width="${w}"/>`;
     c.forEach(q=>h+=`<circle class="pt" cx="${q[0]}" cy="${q[1]}" r="${r}" fill="var(--surface)" stroke="var(--accent)" stroke-width="${w}"/>`);
   }
+  h+=`<line id="tracePrev" x1="0" y1="0" x2="0" y2="0" stroke="var(--accent)" stroke-opacity=".55" stroke-linecap="round" stroke-width="0" pointer-events="none"/>`;
   h+=`<circle id="snapDot" cx="0" cy="0" r="0" fill="none" stroke="var(--accent)" stroke-width="${(2/V.k).toFixed(2)}" pointer-events="none"/>`;
   g.innerHTML=h;renderItemLegend();
 }
@@ -1293,7 +1336,7 @@ function renderPlan(){
       }
       if(d&&TOOL.on&&moved<4&&e.type==="pointerup"){
         const r=el.getBoundingClientRect(),raw=[(e.clientX-r.left-V.x)/V.k,(e.clientY-r.top-V.y)/V.k];
-        if(TOOL.room)pickRoom(raw);else addPoint(e.shiftKey?raw:snapTo(raw).pt);
+        if(TOOL.trace)traceAdd(raw);else if(TOOL.room)pickRoom(raw);else addPoint(e.shiftKey?raw:snapTo(raw).pt);
       }
       if(d&&CLEAN.on&&moved<4&&e.type==="pointerup"){
         const r=el.getBoundingClientRect();CLEAN.pts.push([(e.clientX-r.left-V.x)/V.k,(e.clientY-r.top-V.y)/V.k]);
