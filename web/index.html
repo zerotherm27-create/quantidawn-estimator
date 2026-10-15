@@ -1939,7 +1939,9 @@ async function boot(){
     $$("#recent [data-pa]").forEach(b=>b.onclick=()=>{lsSet("qd-archived",b.dataset.pa);location.reload()});
     $$("#recent [data-arch]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{const r=await fetch(`/api/project/${encodeURIComponent(b.dataset.arch)}/archive`,{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":(document.querySelector('meta[name="csrf-token"]')||{}).content||""},body:JSON.stringify({archived:b.dataset.to==="1"})});if(!r.ok)throw 0;location.reload()}catch(e){b.disabled=false;b.textContent="Failed, retry"}});
     $$("#recent [data-pf]").forEach(b=>b.onclick=()=>{lsSet("qd-projects",b.dataset.pf);location.reload()})}catch(e){}
-  {const up=!!(PROJ.id&&!PROJ.sample);const rb=document.getElementById("readBtn"),ab=document.getElementById("aiBtn");if(rb)rb.hidden=!up;if(ab)ab.hidden=!(up&&LINES.length)}
+  {const up=!!(PROJ.id&&!PROJ.sample);const rb=document.getElementById("readBtn"),ab=document.getElementById("aiBtn");if(rb)rb.hidden=!up;
+    if(ab){ab.hidden=!up;const none=up&&!LINES.length;ab.disabled=none;      // visible on any uploaded project; it needs lines to cross-check
+      ab.title=none?"Nothing to check yet. Read markups, or add takeoff lines, first: the AI gives a second opinion on the lines you have.":"Ask the AI to read the legend as a second opinion"}}
   if(empty)go("upload");else if(!LINES.length)go("review");
   renderAll();
   if(IS_POP&&BC)BC.postMessage({type:"hello",from:ME});
