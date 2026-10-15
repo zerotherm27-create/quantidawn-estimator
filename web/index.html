@@ -685,7 +685,7 @@ function liveText(){
   const u=l.mt==="len"?"m":l.mt==="area"?"m2":"";
   if(TOOL.trace)return `Measuring <b>${l.mk}</b>: click a wall to take its straight run. Each click adds one line.<br>Delete a wrong one by selecting it. Esc ends`;
   if(TOOL.room)return `Measuring <b>${l.mk}</b>: click inside a room to take its outline.<br>Door openings are fine. Drag its corners afterwards to adjust. Esc cancels`;
-  const how=l.mt==="count"?"Click each item":l.mt==="len"?"Click along the run, double-click to finish":"Click corners, double-click to close";
+  const how=l.mt==="count"?"Click each item":(l.mt==="len"?"Click along the run, double-click to finish":"Click corners, double-click to close")+`. Shift: straight line. Alt: free. Type a number then Enter: exact distance. Ctrl+Z undoes`;
   return `Measuring <b>${l.mk}</b> by ${MT_NAME[l.mt]}: <b>${l.mt==="count"?v:v.toFixed(2)} ${u}</b><br>${how}. Esc cancels, Backspace undoes`;
 }
 /* --- takeoff items: a name, what is measured and a colour, like Bluebeam or PlanSwift --- */
@@ -761,22 +761,55 @@ async function ensureGeo(page){
   if(TOOL.on)renderTools()}
 function snapTo(pt){       // {pt, snapped}: an end of a wall within reach first, else the nearest point along one
   const g=GEO[V.page];if(!SNAP.on||!g||!g.segs.length)return {pt,snapped:false};
-  const R=10/V.k,cs=g.cs,seen=new Set();let end=null,ed=R,on=null,od=R*.8;
+  const R=10/V.k,cs=g.cs,seen=new Set();let end=null,ed=R,mid=null,md=R*.6,on=null,od=R*.8;
   for(let cx=Math.floor((pt[0]-R)/cs);cx<=Math.floor((pt[0]+R)/cs);cx++)for(let cy=Math.floor((pt[1]-R)/cs);cy<=Math.floor((pt[1]+R)/cs);cy++){
     for(const si of g.cells.get(cx+","+cy)||[]){
       if(seen.has(si))continue;seen.add(si);
       const s=g.segs[si],bonus=s[4]>=.4?R*.2:0;
       for(const q of [[s[0],s[1]],[s[2],s[3]]]){const d=Math.hypot(q[0]-pt[0],q[1]-pt[1])-bonus;if(d<ed){ed=d;end=q}}
       const dx=s[2]-s[0],dy=s[3]-s[1],L=dx*dx+dy*dy;let t=L?((pt[0]-s[0])*dx+(pt[1]-s[1])*dy)/L:0;t=Math.max(0,Math.min(1,t));
-      const q=[s[0]+t*dx,s[1]+t*dy],d=Math.hypot(q[0]-pt[0],q[1]-pt[1])-bonus;if(d<od){od=d;on=q}}}
-  const best=end||on;return best?{pt:best,snapped:true}:{pt,snapped:false}}
+      const q=[s[0]+t*dx,s[1]+t*dy],d=Math.hypot(q[0]-pt[0],q[1]-pt[1])-bonus;if(d<od){od=d;on=q}
+      if(L>144){const m=[(s[0]+s[2])/2,(s[1]+s[3])/2],dm=Math.hypot(m[0]-pt[0],m[1]-pt[1])-bonus;if(dm<md){md=dm;mid=m}}}}   // the middle of a wall (12 pt or longer)
+  const best=end||mid||on;return best?{pt:best,snapped:true}:{pt,snapped:false}}
+/* straight lines: with Shift held the next point locks to the nearest 45 degrees from the last one (horizontal, vertical, diagonal).
+   ORTHO_START and ORTHO_END mark the pure function that tests/test_trace.py runs under node. */
+// ORTHO_START
+function constrainStraight(a,p){
+  const dx=p[0]-a[0],dy=p[1]-a[1],step=Math.PI/4,ang=Math.round(Math.atan2(dy,dx)/step)*step,c=Math.cos(ang),s=Math.sin(ang);
+  const len=dx*c+dy*s;                                                        // the cursor's distance along that direction
+  return [a[0]+len*c,a[1]+len*s]}
+function pointAlong(a,p,d){const dx=p[0]-a[0],dy=p[1]-a[1],L=Math.hypot(dx,dy);return L?[a[0]+dx/L*d,a[1]+dy/L*d]:null}   // d along the way from a toward p
+// ORTHO_END
+function placePoint(raw,mods){      // where a click would land: Alt is free, Shift is straight, otherwise snapped to the drawing
+  const last=TOOL.pts.length&&TOOL.pts[TOOL.pts.length-1],counting=(curLine()||{}).mt==="count";
+  if(mods.alt)return {pt:raw,snapped:false,straight:false};
+  if(mods.shift&&last&&!counting){
+    const c=constrainStraight(last,raw),sn=SNAP.on?snapTo(c):{snapped:false};
+    if(sn.snapped){const dx=c[0]-last[0],dy=c[1]-last[1],L=Math.hypot(dx,dy)||1,off=Math.abs(dx*(sn.pt[1]-last[1])-dy*(sn.pt[0]-last[0]))/L;
+      if(off<=1.5)return {pt:constrainStraight(last,sn.pt),snapped:true,straight:true}}      // a corner that lies on the straight line
+    return {pt:c,snapped:false,straight:true}}
+  const sn=snapTo(raw);return {pt:sn.pt,snapped:sn.snapped,straight:false}}
+let LASTMOUSE=null,LASTMODS={},DIST="";      // DIST: a distance being typed in metres
 function showSnap(e,pt){
   const dot=document.getElementById("snapDot");if(!dot)return;
   const prev=document.getElementById("tracePrev");
   if(prev){const g=GEO[V.page],run=TOOL.on&&TOOL.trace&&g?traceRun(g.segs,pt,10/V.k):null;
     if(run){prev.setAttribute("x1",run[0][0]);prev.setAttribute("y1",run[0][1]);prev.setAttribute("x2",run[1][0]);prev.setAttribute("y2",run[1][1]);prev.setAttribute("stroke-width",(4/V.k).toFixed(2))}else prev.setAttribute("stroke-width","0")}
-  const sn=TOOL.on&&!TOOL.room&&!TOOL.trace&&!e.shiftKey?snapTo(pt):{snapped:false};
-  if(sn.snapped){dot.setAttribute("cx",sn.pt[0]);dot.setAttribute("cy",sn.pt[1]);dot.setAttribute("r",(6/V.k).toFixed(2))}else dot.setAttribute("r","0")}
+  LASTMOUSE=pt;if(!/^key/.test(e.type)||e.key==="Shift"||e.key==="Alt")LASTMODS={shift:e.shiftKey,alt:e.altKey};      // typing a digit must not forget the Shift held on the last mouse move
+  const l0=curLine(),live=TOOL.on&&!TOOL.room&&!TOOL.trace,pl=live?placePoint(pt,LASTMODS):null,
+    last=TOOL.pts.length&&TOOL.pts[TOOL.pts.length-1],first=TOOL.pts[0],mp=SCALES[V.page].ratio?mPerPt():0;
+  let closing=false;
+  if(pl&&last&&l0&&l0.mt!=="count"){
+    if(l0.mt==="area"&&TOOL.pts.length>=3&&Math.hypot(pt[0]-first[0],pt[1]-first[1])<=10/V.k){pl.pt=first;pl.snapped=true;closing=true}   // click the first point to close the area
+    else if(DIST&&mp){const q=pointAlong(last,pl.pt,parseFloat(DIST)/mp);if(q){pl.pt=q;pl.snapped=false}}}
+  if(pl&&pl.snapped){dot.setAttribute("cx",pl.pt[0]);dot.setAttribute("cy",pl.pt[1]);dot.setAttribute("r",((closing?9:6)/V.k).toFixed(2))}else dot.setAttribute("r","0");
+  const rb=document.getElementById("rubber"),tx=document.getElementById("rubTxt");
+  if(rb){if(pl&&last&&l0&&l0.mt!=="count"){rb.setAttribute("x1",last[0]);rb.setAttribute("y1",last[1]);rb.setAttribute("x2",pl.pt[0]);rb.setAttribute("y2",pl.pt[1]);
+      rb.setAttribute("stroke-width",(2/V.k).toFixed(2));rb.setAttribute("stroke-dasharray",pl.straight?"":(6/V.k).toFixed(1)+" "+(4/V.k).toFixed(1));rb.setAttribute("stroke",pl.straight?"var(--accent)":"var(--ink-3)");
+      if(tx&&mp){const dx=pl.pt[0]-last[0],dy=pl.pt[1]-last[1],len=Math.hypot(dx,dy)*mp,ang=(Math.atan2(-dy,dx)*180/Math.PI+360)%360;   // angle from the horizontal, anticlockwise like a plan
+        tx.textContent=(DIST?"type "+DIST+" m, Enter":len.toFixed(2)+" m")+"   "+ang.toFixed(0)+"°";
+        tx.setAttribute("x",(last[0]+pl.pt[0])/2+8/V.k);tx.setAttribute("y",(last[1]+pl.pt[1])/2-8/V.k);tx.setAttribute("font-size",(12/V.k).toFixed(2))}}
+    else{rb.setAttribute("stroke-width","0");if(tx)tx.textContent=""}}}
 /* trace: click a wall and take its whole straight run. Walls are drawn as many short strokes, so join the collinear ones that touch.
    TRACE_START and TRACE_END mark the pure function that tests/test_trace.py runs under node. */
 // TRACE_START
@@ -868,7 +901,7 @@ function renderTools(){
     ?`<button class="btn" id="tCleanCan">Cancel</button><div class="meas">Click two opposite corners of the area to leave out, such as a logo, a stamp or the title block${CLEAN.pts.length?" (1 of 2 set)":""}.<br>Esc cancels</div>`
     :TOOL.on
     ?`<button class="btn live" id="tFin">Finish</button><button class="btn" id="tCan">Cancel</button>`
-      +(GEO[V.page]&&GEO[V.page].segs.length?`<button class="btn ${SNAP.on?"live":""}" id="tSnap" title="Snap to the drawing's own lines. Hold Shift to place a point freely">Snap ${SNAP.on?"on":"off"}</button>`:"")
+      +(GEO[V.page]&&GEO[V.page].segs.length?`<button class="btn ${SNAP.on?"live":""}" id="tSnap" title="Snap to the drawing's own lines. Hold Shift for a straight line, Alt to place a point freely">Snap ${SNAP.on?"on":"off"}</button>`:"")
       +(l&&l.mt==="len"&&GEO[V.page]&&GEO[V.page].segs.length?`<button class="btn ${TOOL.trace?"live":""}" id="tTrace" title="Click a wall to take its whole straight run in one go">Trace wall</button>`:"")
       +(l&&l.mt==="area"&&GEO[V.page]&&GEO[V.page].segs.length?`<button class="btn ${TOOL.room?"live":""}" id="tRoom" title="Click inside a closed room to take its outline">Pick room</button>`:"")
       +`<div class="meas">${liveText()}</div>`
@@ -899,11 +932,16 @@ function startMeasure(){
   const l=curLine();if(!l||!toolOK())return;
   if(!l.it&&l.sheet-1!==V.page)setPage(l.sheet-1);
   TOOL.on=true;TOOL.pts=[];TOOL.room=false;TOOL.trace=false;ensureGeo(V.page);renderTools();drawOverlays()}
-function cancelMeasure(){TOOL.on=false;TOOL.pts=[];TOOL.room=false;TOOL.trace=false;renderTools();drawOverlays()}
+function cancelMeasure(){DIST="";TOOL.on=false;TOOL.pts=[];TOOL.room=false;TOOL.trace=false;renderTools();drawOverlays()}
 function addPoint(pt){
   const l=curLine();if(!TOOL.on||!l)return;
   if(l.mt==="count"){(MEAS[l.el]=MEAS[l.el]||[]).push({page:V.page,kind:"count",pts:[pt]});recomputeEl(l.el);renderAll();TOOL.on=true;renderTools();drawOverlays();return}
-  TOOL.pts.push(pt);renderTools();drawOverlays()}
+  TOOL.pts.push(pt);DIST="";renderTools();drawOverlays()}
+function undoLast(){        // Ctrl or Cmd+Z: the last point being drawn, else the last shape of the selected item
+  if(TOOL.on&&TOOL.pts.length){TOOL.pts.pop();DIST="";renderTools();drawOverlays();return}
+  const E=curEl(),list=E!=null&&MEAS[E];if(!list||!list.length)return;
+  list.pop();if(!list.length)delete MEAS[E];SELS.el=null;SELS.idx=null;
+  recomputeEl(E);renderAll();renderTools();drawOverlays()}
 function finishShape(){
   const l=curLine();if(!TOOL.on||!l)return;
   if(l.mt==="count"){cancelMeasure();return}
@@ -1290,6 +1328,8 @@ function drawOverlays(){
     if(c.length===2)h+=`<line class="src" x1="${c[0][0]}" y1="${c[0][1]}" x2="${c[1][0]}" y2="${c[1][1]}" stroke="var(--accent)" stroke-width="${w}"/>`;
     c.forEach(q=>h+=`<circle class="pt" cx="${q[0]}" cy="${q[1]}" r="${r}" fill="var(--surface)" stroke="var(--accent)" stroke-width="${w}"/>`);
   }
+  h+=`<text id="rubTxt" x="0" y="0" font-size="12" font-family="Geist Mono,monospace" fill="var(--ink)" stroke="#fff" stroke-width="3" paint-order="stroke" pointer-events="none"></text>`;
+  h+=`<line id="rubber" x1="0" y1="0" x2="0" y2="0" stroke="var(--ink-3)" stroke-width="0" pointer-events="none"/>`;
   h+=`<line id="tracePrev" x1="0" y1="0" x2="0" y2="0" stroke="var(--accent)" stroke-opacity=".55" stroke-linecap="round" stroke-width="0" pointer-events="none"/>`;
   h+=`<circle id="snapDot" cx="0" cy="0" r="0" fill="none" stroke="var(--accent)" stroke-width="${(2/V.k).toFixed(2)}" pointer-events="none"/>`;
   g.innerHTML=h;renderItemLegend();
@@ -1336,7 +1376,10 @@ function renderPlan(){
       }
       if(d&&TOOL.on&&moved<4&&e.type==="pointerup"){
         const r=el.getBoundingClientRect(),raw=[(e.clientX-r.left-V.x)/V.k,(e.clientY-r.top-V.y)/V.k];
-        if(TOOL.trace)traceAdd(raw);else if(TOOL.room)pickRoom(raw);else addPoint(e.shiftKey?raw:snapTo(raw).pt);
+        if(TOOL.trace)traceAdd(raw);else if(TOOL.room)pickRoom(raw);else{
+          const l1=curLine();
+          if(l1&&l1.mt==="area"&&TOOL.pts.length>=3&&Math.hypot(raw[0]-TOOL.pts[0][0],raw[1]-TOOL.pts[0][1])<=10/V.k)finishShape();
+          else addPoint(DIST&&TOOL.pts.length?(pointAlong(TOOL.pts[TOOL.pts.length-1],placePoint(raw,{shift:e.shiftKey,alt:e.altKey}).pt,parseFloat(DIST)/mPerPt())||raw):placePoint(raw,{shift:e.shiftKey,alt:e.altKey}).pt)}
       }
       if(d&&CLEAN.on&&moved<4&&e.type==="pointerup"){
         const r=el.getBoundingClientRect();CLEAN.pts.push([(e.clientX-r.left-V.x)/V.k,(e.clientY-r.top-V.y)/V.k]);
@@ -1614,15 +1657,23 @@ $("#pdfBtn").onclick=async()=>{
   }catch(e){msg(e.message)}
   b.disabled=false;
 };
+["keydown","keyup"].forEach(t=>document.addEventListener(t,e=>{
+  if((e.key==="Shift"||e.key==="Alt")&&TOOL.on&&LASTMOUSE)showSnap(e,LASTMOUSE)}));
 document.addEventListener("keydown",e=>{
   if(CLEAN.on&&e.key==="Escape"){cancelClean();return}
   if(PICK.size&&e.key==="Escape"){PICK.clear();renderTable();renderTools();return}
   if(!TOOL.on&&SELS.el!=null&&(e.key==="Delete"||e.key==="Backspace")&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){e.preventDefault();deleteShape();return}
   if(!TOOL.on&&SELS.el!=null&&e.key==="Escape"){SELS.el=null;SELS.idx=null;renderTools();drawOverlays();return}
-  if(TOOL.on&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){
-    if(e.key==="Escape"){cancelMeasure();return}
-    if(e.key==="Enter"){finishShape();return}
-    if(e.key==="Backspace"){e.preventDefault();TOOL.pts.pop();renderTools();drawOverlays();return}
+  const typing=/INPUT|TEXTAREA/.test(document.activeElement.tagName);
+  if((e.ctrlKey||e.metaKey)&&!e.shiftKey&&e.key.toLowerCase()==="z"&&!typing&&$("#v-review").classList.contains("on")&&!CLEAN.on){e.preventDefault();undoLast();return}
+  if(TOOL.on&&!typing){
+    const last=TOOL.pts.length&&TOOL.pts[TOOL.pts.length-1],l=curLine();
+    if(last&&l&&l.mt!=="count"&&!TOOL.trace&&!TOOL.room&&!e.ctrlKey&&!e.metaKey&&/^[0-9.,]$/.test(e.key)){e.preventDefault();DIST+=e.key===","?".":e.key;if(LASTMOUSE)showSnap(e,LASTMOUSE);return}      // type an exact distance
+    if(e.key==="Escape"){if(DIST){DIST="";if(LASTMOUSE)showSnap(e,LASTMOUSE);return}cancelMeasure();return}
+    if(e.key==="Enter"){
+      if(DIST&&last&&LASTMOUSE){const d=parseFloat(DIST),mp=SCALES[V.page].ratio?mPerPt():0,q=d>0&&mp?pointAlong(last,placePoint(LASTMOUSE,LASTMODS).pt,d/mp):null;DIST="";if(q)addPoint(q);else if(LASTMOUSE)showSnap(e,LASTMOUSE);return}
+      finishShape();return}
+    if(e.key==="Backspace"){e.preventDefault();if(DIST){DIST=DIST.slice(0,-1);if(LASTMOUSE)showSnap(e,LASTMOUSE);return}TOOL.pts.pop();renderTools();drawOverlays();return}
   }
   if(!$("#v-review").classList.contains("on")||/INPUT|TEXTAREA/.test(document.activeElement.tagName))return;
   const vis=LINES.filter(l=>visible(l)&&!st.shut.has(l.g)),i=vis.findIndex(l=>l.id===st.sel);
