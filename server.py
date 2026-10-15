@@ -24,7 +24,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 
 from core import auth, shares
-from core import geometry, logic_reader, markup_pdf, reader
+from core import detect, geometry, logic_reader, markup_pdf, reader
 from core.dupes import find_duplicates
 from core.price_matcher import load_price_list, price_lines
 from core.project import DATA, ROOT, SAMPLES, _scale_json, apply_entries, demo_ai, from_json, native_z, render_pages, sample_project
@@ -585,6 +585,36 @@ def room_outline(pid):
     if not pts or len(pts) < 3:
         return jsonify(error="That spot is not inside a closed room. Click inside a room whose walls are closed (door openings are fine), or draw the area by hand."), 422
     return jsonify(pts=[[round(a * k, 1), round(b * k, 1)] for a, b in pts])
+
+
+@app.post("/api/project/<pid>/detect")
+def auto_detect(pid):
+    """Auto-detect on a vector sheet: the rooms the plan labels (with outlines), the building's outline, and the door swings.
+    Returned as suggestions in the app's page space for a person to accept. {page, ratio}."""
+    check_id(pid)
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        n, ratio = int(body.get("page")), float(body.get("ratio"))
+    except (TypeError, ValueError):
+        abort(400)
+    if not (math.isfinite(ratio) and 1 <= ratio <= 10000):
+        abort(400)
+    pdf, idx = page_source(pid, n)
+    w, h, segs = geometry.page_segments(pdf, idx)
+    if len(segs) < CLEAN_PLAN_SEGS:
+        return jsonify(error="This sheet is a picture, not a vector drawing, so there is nothing to detect. Detect works on a PDF exported from CAD."), 422
+    k = _page_scale(pid, n, w)
+
+    def sc(pts):
+        return [[round(a * k, 1), round(b * k, 1)] for a, b in pts] if pts else pts
+    res = detect.detect_page(pdf, idx, ratio)
+    for r in res["rooms"]:
+        r["pts"], r["label"] = sc(r["pts"]), sc([r["label"]])[0]
+    if res["outline"]:
+        res["outline"]["pts"] = sc(res["outline"]["pts"])
+    for d in res["doors"]:
+        d["x"], d["y"] = round(d["x"] * k, 1), round(d["y"] * k, 1)
+    return jsonify(res)
 
 
 @app.delete("/api/project/<pid>/read")
