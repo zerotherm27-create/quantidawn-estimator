@@ -1728,7 +1728,7 @@ const BC=typeof BroadcastChannel!=="undefined"?new BroadcastChannel("qd-"+PID+(D
 let popWin=null,popTimer=null,REMOTE=false,syncT=null;
 const fp=l=>l.it?"item"+l.it+"|"+l.calc+"|"+l.u:l.ds+"|"+l.calc+"|"+l.u;      // an item is known by its id, so renaming it keeps its saved height and openings   // what a line is, so saved edits are not applied to a different line that now has its id
 function buildState(){
-  return {v:2,sel:st.sel,page:V.page,meas:MEAS,
+  return {v:2,sel:st.sel,page:V.page,meas:MEAS,known:[...new Set(LINES.map(l=>l.el).filter(e=>e>=0))],      // the elements this window has lines for: a stale window must not speak for the ones it has never heard of
     scales:SCALES.map(x=>({ratio:x.ratio,status:x.status,src:x.src,note:x.note})),
     pricing:{on:PRICING.on,list:PRICING.list,pct:PRICING.pct,currency:PRICING.currency,labourRate:PRICING.labourRate},
     lines:LINES.map(l=>({id:l.id,f:fp(l),n:l.n,q:l.q,dm:l.dm,st:l.st,src2:l.src2,orig:l.orig,ag:l.ag==="resolved"?"resolved":undefined,rate:l.rate,lhpu:l.lhpu,lrate:l.lrate,pm:l.pm,pm0:l.pm0}))}}
@@ -1880,7 +1880,7 @@ async function saveNow(force){
 }
 function applyState(d,live){
   if(!d||d.v!==2)return;
-  if(live)Object.keys(MEAS).forEach(k=>delete MEAS[k]);          // a live update replaces the shapes, it does not add to them
+  if(live&&Array.isArray(d.known)){const k=new Set(d.known.map(String));Object.keys(MEAS).forEach(m=>{if(k.has(m))delete MEAS[m]})}      // replace only what the sender knows about; shapes for items it has not loaded yet are kept
   Object.keys(d.meas||{}).forEach(k=>MEAS[k]=d.meas[k]);
   (d.scales||[]).forEach((x,i)=>{if(SCALES[i])Object.assign(SCALES[i],x)});
   (d.lines||[]).forEach(x=>{const l=LINES.find(y=>y.id===x.id);if(l&&(x.f==null||x.f===fp(l)||(l.it&&x.f===l.ds+"|"+l.calc+"|"+l.u))){l.n=x.n;l.q=x.q;l.dm=x.dm;l.st=x.st;l.src2=x.src2;if(x.ag==="resolved"){l.ag="resolved";l.agr=""}if(x.orig)l.orig=x.orig;if(x.pm){l.pm=x.pm;l.pm0=x.pm0;l.rate=x.rate==null?null:x.rate;l.lhpu=x.lhpu==null?null:x.lhpu;l.lrate=x.lrate==null?null:x.lrate}}});
