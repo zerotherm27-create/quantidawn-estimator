@@ -204,6 +204,11 @@ tr.l.sel td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 .idlg .act{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
 .sw{display:inline-block;width:20px;height:20px;border-radius:6px;margin:2px 4px 2px 0;cursor:pointer;border:2px solid transparent;vertical-align:middle}.sw.on{border-color:var(--ink)}
 .itact{margin-top:8px}
+.detpanel{position:absolute;right:14px;bottom:62px;z-index:3;width:min(300px,calc(100% - 28px));max-height:52%;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:0 8px 28px rgba(24,24,27,.18);font-size:12.5px;color:var(--ink-2)}
+.detpanel h4{margin:0 0 6px;font-size:13.5px;color:var(--ink);cursor:pointer;display:flex;justify-content:space-between}.detpanel.min>:not(h4){display:none}.detpanel.min h4{margin:0}.detpanel .sub{color:var(--ink-3);font-size:11.5px;margin-bottom:8px}
+.detpanel label{display:flex;gap:8px;align-items:center;padding:3px 0;cursor:pointer}.detpanel label b{font-weight:500;color:var(--ink)}.detpanel label span{margin-left:auto;font:500 11.5px var(--mono);white-space:nowrap}
+.detpanel .grp{margin:8px 0 2px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3)}
+.detpanel .chk{color:#b7791f}.detpanel .act{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
 .opn{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--ink-3)}
 .opn input{width:64px;padding:5px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
 .idlg .sz{display:none}.idlg .sz.on{display:block}
@@ -635,7 +640,8 @@ let PID=QS.get("project")||"boxshall";
 const DEMO_AI=QS.has("demo_ai");
 let PROJ=null,GROUPS=[],LINES=[],SKIPPED=[],SHEETS=[],SCALES=[];
 const AG_PRI={disputed:0,ai_only:1,unconfirmed:2,unrun:3,agreed:3,resolved:3};
-const MEAS={}, TOOL={on:false,pts:[],room:false,trace:false}, GEO={}, SNAP={on:true}, SELS={el:null,idx:null}, PICK=new Set(), CLEAN={on:false,pts:[]};   // PICK: colour lines ticked to combine; CLEAN: drawing a clean-up box   // MEAS is keyed by element: one drawn shape feeds every line of that element
+const MEAS={}, TOOL={on:false,pts:[],room:false,trace:false}, GEO={}, SNAP={on:true}, SELS={el:null,idx:null}, PICK=new Set(), CLEAN={on:false,pts:[]};
+let DET=null;        // the auto-detect suggestions on show   // PICK: colour lines ticked to combine; CLEAN: drawing a clean-up box   // MEAS is keyed by element: one drawn shape feeds every line of that element
 let DRAG=null;
 const MT_NAME={len:"length",area:"area",count:"count"};
 const base=n=>n.A!=null?n.A:(n.L||0)*(n.W||0)*(n.N==null?1:n.N);
@@ -857,6 +863,68 @@ async function pickRoom(pt){
     recomputeEl(l.el);TOOL.on=false;TOOL.room=false;TOOL.pts=[];renderAll();renderTools();drawOverlays()
   }catch(e){if(note)note.innerHTML="Could not find a room there."}}
 
+/* --- auto-detect: what the drawing itself says (rooms, outline, doors), offered as suggestions to accept --- */
+const polyArea=p=>Math.abs(p.reduce((a,q,i)=>a+q[0]*p[(i+1)%p.length][1]-p[(i+1)%p.length][0]*q[1],0))/2;
+async function runDetect(){
+  const ratio=(SCALES[V.page]||{}).ratio;
+  if(!ratio){alert("Set this sheet's scale first (Enter scale), so the detected sizes are right.");return}
+  const b=$("#tDetect");if(b){b.disabled=true;b.textContent="Detecting..."}
+  try{
+    const r=await fetch(`/api/project/${PID}/detect`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:V.page+1,ratio})});
+    let j={};try{j=await r.json()}catch(e){}
+    if(!r.ok)throw new Error(j.error||"Could not detect anything on this sheet");
+    DET={page:V.page,ratio,rooms:j.rooms||[],outline:j.outline||null,doors:j.doors||[],
+      pick:{rooms:new Set((j.rooms||[]).map((r,i)=>r.status==="match"?i:-1).filter(i=>i>=0)),outline:!!j.outline,doors:(j.doors||[]).length>0}};
+    renderDetPanel();drawOverlays();
+  }catch(e){alert(e.message)}
+  finally{renderTools()}}
+function renderDetPanel(){
+  const pl=$("#plan");if(!pl)return;let el=$("#detPanel");
+  if(!DET||DET.page!==V.page){if(el)el.remove();return}
+  if(!el){el=document.createElement("div");el.id="detPanel";el.className="detpanel";pl.appendChild(el)}
+  const rs=DET.rooms.filter(r=>r.pts),open=DET.rooms.length-rs.length,w={};
+  DET.doors.forEach(d=>w[d.width_mm]=(w[d.width_mm]||0)+1);
+  el.classList.toggle("min",!!DET.min);el.innerHTML=`<h4 data-dmin title="Click to collapse or open">Found on this sheet <span>${DET.min?"+":"&ndash;"}</span></h4><div class="sub">Tick what to add to your takeoff. Check every one against the drawing.</div>
+    ${rs.length?`<div class="grp">Rooms (${rs.length})</div>`+DET.rooms.map((r,i)=>r.pts?`<label><input type="checkbox" data-dr="${i}" ${DET.pick.rooms.has(i)?"checked":""}><b>${esc(r.name||"Room")}</b><span class="${r.status==="check"?"chk":""}">${fmt(r.area)} m&sup2; ${r.status==="check"?"(check)":""}</span></label>`:"").join(""):""}
+    ${DET.outline?`<div class="grp">Building</div><label><input type="checkbox" data-do ${DET.pick.outline?"checked":""}><b>Outline</b><span>${fmt(DET.outline.area)} m&sup2; &middot; ${fmt(DET.outline.perimeter)} m</span></label>`:""}
+    ${DET.doors.length?`<div class="grp">Doors</div><label><input type="checkbox" data-dd ${DET.pick.doors?"checked":""}><b>${DET.doors.length} door swings</b><span>${Object.entries(w).map(([k,v])=>v+" &times; "+k).join(", ")} mm</span></label>`:""}
+    ${!rs.length&&!DET.outline&&!DET.doors.length?`<div>Nothing found. The sheet may have no room labels or closed walls.</div>`:""}
+    ${open?`<div class="sub" style="margin-top:6px">${open} labelled room${open>1?"s":""} not closed in by walls (open plan, or door openings too wide): draw or Pick room those.</div>`:""}
+    <div class="act"><button class="btn" id="detClose">Close</button><button class="btn primary" id="detAdd">Add to takeoff</button></div>`;
+  el.onclick=e=>{
+    const t=e.target;if(t.closest&&t.closest("[data-dmin]")){DET.min=!DET.min;renderDetPanel();return}
+    if(t.id==="detClose"){DET=null;renderDetPanel();drawOverlays();return}
+    if(t.id==="detAdd")return addDetected();
+    if(t.dataset&&t.dataset.dr!=null){const i=+t.dataset.dr;t.checked?DET.pick.rooms.add(i):DET.pick.rooms.delete(i);drawOverlays()}
+    if(t.dataset&&t.dataset.do!=null){DET.pick.outline=t.checked;drawOverlays()}
+    if(t.dataset&&t.dataset.dd!=null){DET.pick.doors=t.checked;drawOverlays()}}}
+function detOverlay(){
+  if(!DET||DET.page!==V.page)return "";let h="";const sw=(2/V.k).toFixed(2),fs=(11/V.k).toFixed(2);
+  DET.rooms.forEach((r,i)=>{if(!r.pts)return;const on=DET.pick.rooms.has(i),c=r.status==="check"?"#b7791f":"#2f855a";
+    h+=`<polygon points="${r.pts.map(p=>p.join(",")).join(" ")}" fill="${c}" fill-opacity="${on?.2:.06}" stroke="${c}" stroke-width="${sw}" ${on?"":`stroke-dasharray="${(5/V.k).toFixed(1)} ${(4/V.k).toFixed(1)}"`} pointer-events="none"/>`
+      +`<text x="${r.label[0]}" y="${r.label[1]}" text-anchor="middle" font-size="${fs}" font-family="Geist Mono,monospace" fill="${c}" stroke="#fff" stroke-width="${(3/V.k).toFixed(2)}" paint-order="stroke" pointer-events="none">${esc(fmt(r.area))} m2</text>`});
+  if(DET.outline){const on=DET.pick.outline;h+=`<polygon points="${DET.outline.pts.map(p=>p.join(",")).join(" ")}" fill="none" stroke="#d9531e" stroke-width="${(on?3:2)/V.k}" stroke-dasharray="${(8/V.k).toFixed(1)} ${(5/V.k).toFixed(1)}" stroke-opacity="${on?1:.4}" pointer-events="none"/>`}
+  if(DET.pick.doors)DET.doors.forEach(d=>{h+=`<circle cx="${d.x}" cy="${d.y}" r="${(6/V.k).toFixed(2)}" fill="#2b6cb0" fill-opacity=".85" stroke="#fff" stroke-width="${(1.5/V.k).toFixed(2)}" pointer-events="none"/>`});
+  return h}
+async function addDetected(){
+  if(!DET)return;
+  const plan=[],pg=DET.page,rooms=[...DET.pick.rooms].map(i=>DET.rooms[i]).filter(r=>r&&r.pts);
+  if(rooms.length)plan.push({name:"Room floors",kind:"area",color:"#17bebb",shapes:rooms.map(r=>({page:pg,kind:"area",pts:r.pts}))});
+  if(DET.pick.outline&&DET.outline){
+    plan.push({name:"Building perimeter",kind:"len",color:"#e4572e",shapes:[{page:pg,kind:"len",pts:[...DET.outline.pts,DET.outline.pts[0]]}]});
+    plan.push({name:"Building footprint",kind:"area",color:"#f3a712",shapes:[{page:pg,kind:"area",pts:DET.outline.pts}]})}
+  if(DET.pick.doors){const by={};DET.doors.forEach(d=>(by[d.width_mm]=by[d.width_mm]||[]).push(d));
+    Object.entries(by).forEach(([wd,list],i)=>plan.push({name:"Door "+wd+" mm",kind:"count",color:["#2b6cb0","#7b2cbf","#2e86ab","#8d5a97"][i%4],shapes:list.map(d=>({page:pg,kind:"count",pts:[[d.x,d.y]]}))}))}
+  if(!plan.length){alert("Tick something to add first.");return}
+  const b=$("#detAdd");if(b){b.disabled=true;b.textContent="Adding..."}
+  try{
+    for(const it of plan){
+      const have=LINES.find(l=>l.it&&l.ds===it.name&&l.mt===({area:"area",len:"len",count:"count"}[it.kind]));
+      if(!have)await itemRequest({add:{name:it.name,kind:it.kind,color:it.color}})}
+    try{sessionStorage.setItem("qd-detected",JSON.stringify(plan))}catch(e){}
+    location.reload()
+  }catch(e){alert(e.message);if(b){b.disabled=false;b.textContent="Add to takeoff"}}}
+
 /* --- clean up: leave an area out of colour reading; combine: add several colour lines into one --- */
 const boxesOn=()=>((PROJ&&PROJ.ignore)||{})[V.page+1]||[];
 const jsonH={"Content-Type":"application/json"};
@@ -908,6 +976,7 @@ function renderTools(){
     :`<button class="btn" id="tMeas" ${dis?"disabled":""} title="${!scaleOk(V.page)?"Confirm this sheet's scale first":"Draw on the plan to set the quantity"}"><svg class="i" viewBox="0 0 16 16"><path d="M2 12l3-3 2 2 5-6M2 14h12"/></svg>Measure ${l?l.mk+" ("+MT_NAME[l.mt]+")":""}</button>`
      +(SELS.el!=null?`<button class="btn" id="tDel">Delete shape <span class="kbd">Del</span></button>`:"")
      +(MEAS[E]&&MEAS[E].length?`<span class="meas">${MEAS[E].length} shape${MEAS[E].length>1?"s":""} on this element${SELS.el==null?". Click a shape to select, drag a corner to adjust":""}</span>`:"")
+     +(PROJ&&!PROJ.sample&&PID?`<button class="btn" id="tDetect" title="Find rooms, the building outline and door swings from the drawing itself (vector PDFs)">Auto-detect</button>`:"")
      +(PROJ&&!PROJ.sample&&PID?`<button class="btn" id="tNew" title="Add something to measure, with its own colour">+ New item</button>`:"")
      +(PROJ&&!PROJ.sample&&PID?`<button class="btn" id="tClean" title="Drag out an area to leave out of colour reading, such as a logo or title block"><svg class="i" viewBox="0 0 16 16"><path d="M2.500 2.500h11v11h-11zM5 11l6-6"/></svg>Clean up area</button>`:"")
      +(boxesOn().length?`<button class="btn" id="tCleanReset" title="Bring back the areas left out on this sheet">Reset clean-up (${boxesOn().length})</button>`:"")
@@ -921,6 +990,7 @@ function renderTools(){
   const ttr=$("#tTrace");if(ttr)ttr.onclick=()=>{TOOL.trace=!TOOL.trace;TOOL.pts=[];renderTools();drawOverlays()};
   const trm=$("#tRoom");if(trm)trm.onclick=()=>{TOOL.room=!TOOL.room;TOOL.trace=false;renderTools()};
   const tn=$("#tNew");if(tn)tn.onclick=newItemDialog;
+  const td=$("#tDetect");if(td)td.onclick=runDetect;
   const tc=$("#tClean");if(tc)tc.onclick=()=>{CLEAN.on=true;CLEAN.pts=[];renderTools();drawOverlays()};
   const tcc=$("#tCleanCan");if(tcc)tcc.onclick=cancelClean;
   const tcr=$("#tCleanReset");if(tcr)tcr.onclick=resetClean;
@@ -1303,6 +1373,7 @@ function drawOverlays(){
     h+=`<rect class="src" x="${x-2}" y="${y-1.5}" width="${w+4}" height="${hh+3}" rx="1.5" fill="rgba(217,83,30,.14)" stroke="var(--accent)" stroke-width="${(2/V.k).toFixed(2)}"/>`}
   const cl=curLine();     // a colour-measured line: paint exactly the pixels it was measured from, so no one has to guess which colour it is
   if(cl&&cl.lk&&PID&&cl.sheet-1===V.page)h+=`<image href="/api/project/${PID}/markup-mask/${cl.sheet}/${(cl.mem||[cl.lk]).map(k=>k.replace(/^\d+/,"")).join("-")}.png" x="0" y="0" width="${PAGE_W}" height="${PAGE_H}" preserveAspectRatio="none" style="pointer-events:none"/>`;
+  h+=detOverlay();
   boxesOn().forEach(b=>{const x=b[0]*PAGE_W,y=b[1]*PAGE_H;      // areas a person left out of colour reading
     h+=`<rect x="${x}" y="${y}" width="${(b[2]-b[0])*PAGE_W}" height="${(b[3]-b[1])*PAGE_H}" fill="rgba(120,120,130,.16)" stroke="var(--ink-3)" stroke-width="${(1.5/V.k).toFixed(2)}" stroke-dasharray="${(6/V.k).toFixed(1)} ${(4/V.k).toFixed(1)}" pointer-events="none"/>`
       +`<text x="${x+4/V.k}" y="${y+14/V.k}" font-size="${(11/V.k).toFixed(2)}" font-family="Geist Mono,monospace" fill="var(--ink-3)" pointer-events="none">left out</text>`});
@@ -1332,7 +1403,7 @@ function drawOverlays(){
   h+=`<line id="rubber" x1="0" y1="0" x2="0" y2="0" stroke="var(--ink-3)" stroke-width="0" pointer-events="none"/>`;
   h+=`<line id="tracePrev" x1="0" y1="0" x2="0" y2="0" stroke="var(--accent)" stroke-opacity=".55" stroke-linecap="round" stroke-width="0" pointer-events="none"/>`;
   h+=`<circle id="snapDot" cx="0" cy="0" r="0" fill="none" stroke="var(--accent)" stroke-width="${(2/V.k).toFixed(2)}" pointer-events="none"/>`;
-  g.innerHTML=h;renderItemLegend();
+  g.innerHTML=h;renderItemLegend();renderDetPanel();
 }
 function flyTo(page,box){
   const el=$("#plan");V.flash={page,box};
@@ -1900,6 +1971,12 @@ document.addEventListener("dblclick",async e=>{
 });
 window.qdBooted=boot();
 window.qdBooted.then(()=>{
+  let det=null;try{det=JSON.parse(sessionStorage.getItem("qd-detected")||"null");sessionStorage.removeItem("qd-detected")}catch(e){}
+  if(det){let last=null;det.forEach(it=>{const l=LINES.find(x=>x.it&&x.ds===it.name&&x.mt===({area:"area",len:"len",count:"count"}[it.kind]));if(!l)return;
+      const cur=MEAS[l.el]=MEAS[l.el]||[],same=(a,b)=>a.page===b.page&&a.kind===b.kind&&Math.abs(a.pts[0][0]-b.pts[0][0])<.5&&Math.abs(a.pts[0][1]-b.pts[0][1])<.5;
+      it.shapes.forEach(sh=>{if(!cur.some(c=>same(c,sh)))cur.push(sh)});             // adding the same detection twice does not double it
+      recomputeEl(l.el);last=l});
+    if(last){st.sel=last.id;if(det[0].shapes[0])setPage(det[0].shapes[0].page);renderAll()}return}
   let id=null;try{id=sessionStorage.getItem("qd-new-item");sessionStorage.removeItem("qd-new-item")}catch(e){}
   const l=id&&LINES.find(x=>x.it===+id);if(!l)return;
   st.sel=l.id;renderAll();
