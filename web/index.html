@@ -750,7 +750,10 @@ function go(v){
     $("#exportBtn").style.visibility=$("#pdfBtn").style.visibility=(v==="review")?"visible":"hidden";
   $("#shareBtn").style.display=(v==="review"||v==="template")?"":"none";
   if(v!=="review"&&v!=="template")closeShare();
-  $("#demoBtn").style.display=$("#resetBtn").style.display=(v==="review"||v==="template"||v==="pricing")?"":"none";
+  const tools=(v==="review"||v==="template"||v==="pricing");
+  $("#resetBtn").style.display=tools?"":"none";
+  // the planted-disagreement demo is for the samples; on a real uploaded project only the real AI check is offered
+  $("#demoBtn").style.display=tools&&!(typeof PROJ!=="undefined"&&PROJ&&PROJ.id&&!PROJ.sample&&!DEMO_AI)?"":"none";
   if(v==="processing") runProc();
   if(v==="review") renderAll();
   if(v==="template") renderTemplate();
