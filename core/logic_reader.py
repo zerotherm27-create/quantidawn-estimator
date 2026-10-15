@@ -94,11 +94,8 @@ def _erode(m):
     return e
 
 
-def measure_colours(pdf, index, ratio, long_edge=2000):
-    """Measure saturated colour groups on a raster page. Returns (groups, note).
-    A group: {key, name, hex, kind: area|length, quantity (m2 or m), unit}."""
-    if not ratio:
-        return [], "The scale of this sheet is not known yet, so colours cannot be measured."
+def _render(pdf, index, long_edge):
+    """The page as an RGB array and its pixels-per-point zoom."""
     doc = fitz.open(pdf)
     try:
         page = doc[index]
@@ -107,18 +104,51 @@ def measure_colours(pdf, index, ratio, long_edge=2000):
         img = np.frombuffer(pix.samples, np.uint8).reshape(pix.h, pix.w, 3)
     finally:
         doc.close()
+    return img, z
+
+
+def _colour_keys(img):
+    """Saturated pixels (markup ink, not grey linework or paper) and the colour bucket of each.
+    Returns (mask, key, hue). The bucket is hue, saturation and brightness, so legend items of similar hue still differ."""
     f = img.astype(np.float32) / 255
     mx, mn = f.max(2), f.min(2)
     d = mx - mn
-    mask = (d / np.maximum(mx, 1e-6) > 0.35) & (mx > 0.3)         # saturated: markup ink, not grey linework or paper
-    if mask.sum() < 400:
-        return [], "No coloured markups were found on this sheet."
+    mask = (d / np.maximum(mx, 1e-6) > 0.35) & (mx > 0.3)
     r, g, b = f[..., 0], f[..., 1], f[..., 2]
     dd = np.maximum(d, 1e-6)
     hue = np.where(mx == r, ((g - b) / dd) % 6, np.where(mx == g, (b - r) / dd + 2, (r - g) / dd + 4)) * 60
     sat = d / np.maximum(mx, 1e-6)
-    # finer than hue alone: legend items of similar hue still differ in shade, so split by hue, saturation and brightness
     key = (hue // 6).astype(np.int32) * 100 + (sat * 4).astype(np.int32) * 10 + (mx * 4).astype(np.int32)
+    return mask, key, hue
+
+
+def colour_group_mask(pdf, index, key, long_edge=2000):
+    """PNG (RGBA) that makes one measured colour group stand out: the rest of the sheet is veiled in translucent white and the
+    group's own pixels are painted solid magenta, thickened so thin strokes are visible when zoomed out. Drawn over the plan when the
+    group's line is selected, so nobody has to guess which colour a line is. The group is rebuilt with the same grouping
+    measure_colours uses; `key` is its 'c<number>' id."""
+    img, _ = _render(pdf, index, long_edge)
+    mask, keys, _ = _colour_keys(img)
+    m = mask & (keys == int(key[1:]))
+    if not m.any():
+        return None
+    for _ in range(4):
+        m = m | np.roll(m, 1, 0) | np.roll(m, -1, 0) | np.roll(m, 1, 1) | np.roll(m, -1, 1)
+    rgba = np.empty(m.shape + (4,), np.uint8)
+    rgba[:] = (255, 255, 255, 150)
+    rgba[m] = (255, 0, 200, 255)                                 # magenta stands out on any markup colour
+    return fitz.Pixmap(fitz.csRGB, m.shape[1], m.shape[0], rgba.tobytes(), True).tobytes("png")
+
+
+def measure_colours(pdf, index, ratio, long_edge=2000):
+    """Measure saturated colour groups on a raster page. Returns (groups, note).
+    A group: {key, name, hex, kind: area|length, quantity (m2 or m), unit}."""
+    if not ratio:
+        return [], "The scale of this sheet is not known yet, so colours cannot be measured."
+    img, z = _render(pdf, index, long_edge)
+    mask, key, hue = _colour_keys(img)
+    if mask.sum() < 400:
+        return [], "No coloured markups were found on this sheet."
     out = []
     for k in np.unique(key[mask]):
         m = mask & (key == k)
