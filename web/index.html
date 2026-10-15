@@ -108,10 +108,14 @@ main{min-width:0;display:flex;flex-direction:column}
 .step b{font-weight:500;display:block;margin-bottom:2px}
 .step span{color:var(--ink-2);font-size:13px}
 .step i{font:500 12px var(--mono);color:var(--accent);padding-top:2px}
+[hidden]{display:none!important}
 .recent{margin-top:4px}
 .recent a{display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:13px;cursor:pointer;transition:padding .25s var(--ease)}
 .recent a:hover{padding-left:6px}
 .recent a span{color:var(--ink-3)}
+.recent .prow{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line)}.recent .prow a{flex:1;border-top:0}
+.recent .prow button{font-size:12px;color:var(--ink-3);padding:4px 9px;border:1px solid var(--line);border-radius:8px;transition:color .2s,background .2s}.recent .prow button:hover{color:var(--ink);background:var(--line-2)}
+.ptoggle.sub{margin-top:-2px}
 .ptoggle{display:flex;gap:2px;margin:0 0 6px}
 .ptoggle button{padding:5px 10px;font-size:12px;color:var(--ink-3);border:1px solid var(--line);border-radius:8px;transition:color .2s,background .2s}
 .ptoggle button.on{color:var(--ink);background:var(--line-2)}
@@ -400,12 +404,15 @@ body.pop .popnote{display:none}
 
 /* ---------- first-use tour: explains the real buttons, reopened with the ? button ---------- */
 #tour{position:fixed;inset:0;z-index:1000;display:none}#tour.on{display:block}
-#tour .spot{position:fixed;border-radius:10px;box-shadow:0 0 0 9999px rgba(10,10,12,.58);outline:2px solid var(--accent);outline-offset:2px;transition:all .28s var(--ease);pointer-events:none}
+#tour .spot{display:none;position:fixed;border-radius:10px;box-shadow:0 0 0 9999px rgba(10,10,12,.58);outline:2px solid var(--accent);outline-offset:2px;transition:all .28s var(--ease);pointer-events:none}
 #tour .tip{position:fixed;width:min(330px,calc(100vw - 24px));background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:16px 18px 14px;box-shadow:0 18px 44px -14px rgba(0,0,0,.4);font-family:var(--font);transition:top .28s var(--ease),left .28s var(--ease)}
 #tour .tk{font:500 11px var(--mono);color:var(--accent);letter-spacing:.04em;text-transform:uppercase}
 #tour h3{font-size:16px;letter-spacing:-.01em;margin:4px 0 6px}#tour p{font-size:13.5px;line-height:1.5;color:var(--ink-2);margin:0}
 #tour .tf{display:flex;align-items:center;gap:8px;margin-top:14px}#tour .tf .sp{flex:1}
 #tour .tskip{background:none;border:0;color:var(--ink-3);font:inherit;font-size:12.5px;cursor:pointer;padding:6px 2px}
+
+.dupb{display:inline-block;margin-left:6px;padding:0 6px;border-radius:9px;font-size:10.5px;font-weight:600;line-height:16px;background:#fdecc8;color:#8a5a00;white-space:nowrap}
+@media (prefers-color-scheme:dark){.dupb{background:#4a3a12;color:#f1c768}}
 </style>
 </head>
 <body>
@@ -418,6 +425,7 @@ body.pop .popnote{display:none}
     <div class="sp"></div>
     <button id="installBtn" title="Install the estimator as an app" aria-label="Install the estimator as an app" hidden><svg class="i" viewBox="0 0 16 16"><path d="M8 2v8m0 0L5 7m3 3l3-3M3 13h10"/></svg></button>
     <button id="helpBtn" title="How to use the estimator" aria-label="How to use the estimator"><svg class="i" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M6.200 6.300c0-1 .8-1.700 1.800-1.700s1.800.7 1.800 1.600c0 1.200-1.800 1.300-1.800 2.600M8 11.400v.1"/></svg></button>
+    <button id="nameBtn" title="Set the name your teammates see" aria-label="Set your display name" hidden><svg class="i" viewBox="0 0 16 16"><circle cx="8" cy="5.500" r="2.500"/><path d="M3 13.500c.500-2.600 2.600-4 5-4s4.500 1.400 5 4"/></svg></button>
     <button id="logoutBtn" title="Sign out" aria-label="Sign out" hidden><svg class="i" viewBox="0 0 16 16"><path d="M6 2.500H3.500v11H6M10 5l3 3-3 3M13 8H6"/></svg></button>
     <button id="themeBtn" title="Switch between light and dark" aria-label="Switch between light and dark"><svg class="i" id="themeIcon" viewBox="0 0 16 16"></svg></button>
   </nav>
@@ -603,6 +611,7 @@ body.pop .popnote{display:none}
     if(r.status===401&&same)location.href="/login?next="+encodeURIComponent(location.pathname+location.search);
     return r}})();
 const QD_USER=(document.querySelector('meta[name="qd-user"]')||{}).content||"";
+const QD_NAME=(document.querySelector('meta[name="qd-name"]')||{}).content||QD_USER;
 
 /* --- project data comes from the server (see server.py); nothing is hard-coded here --- */
 const QS=new URLSearchParams(location.search);
@@ -744,7 +753,10 @@ function go(v){
     $("#exportBtn").style.visibility=$("#pdfBtn").style.visibility=(v==="review")?"visible":"hidden";
   $("#shareBtn").style.display=(v==="review"||v==="template")?"":"none";
   if(v!=="review"&&v!=="template")closeShare();
-  $("#demoBtn").style.display=$("#resetBtn").style.display=(v==="review"||v==="template"||v==="pricing")?"":"none";
+  const tools=(v==="review"||v==="template"||v==="pricing");
+  $("#resetBtn").style.display=tools?"":"none";
+  // the planted-disagreement demo is for the samples; on a real uploaded project only the real AI check is offered
+  $("#demoBtn").style.display=tools&&!(typeof PROJ!=="undefined"&&PROJ&&PROJ.id&&!PROJ.sample&&!DEMO_AI)?"":"none";
   if(v==="processing") runProc();
   if(v==="review") renderAll();
   if(v==="template") renderTemplate();
@@ -787,7 +799,12 @@ async function uploadPdfs(files){
 }
 
 /* --- review rendering --- */
+function dupBadge(l){
+  if(!l.dup||!l.dup.length)return "";
+  const twin=LINES.find(x=>x.id===l.dup[0]),t=twin?`${twin.mk} ${twin.ds}`:"another line";
+  return ` <span class="dupb" title="Looks like the same row read twice: ${esc(t)}. Check the sheet. If it is a repeat, press F on that line to flag it for review.">Possible duplicate</span>`}
 function visible(l){
+  if(st.filter==="dups"&&!(l.dup&&l.dup.length))return false;
   if(st.filter==="review"&&l.st==="ok")return false;
   if(st.filter==="disp"&&!(l.ag==="disputed"||l.ag==="ai_only"))return false;
   if(st.filter==="verified"&&l.st!=="ok")return false;
@@ -835,7 +852,7 @@ function renderTable(){
     h+=`<tr class="g ${shut?"shut":""}" data-g="${gi}" style="top:30px"><td colspan="4"><svg class="i chev" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg>${g.toUpperCase()} <span style="color:var(--ink-3);font-weight:400;margin-left:6px">${rows.length} lines</span></td>${PRICING.on?`<td class="tot r">${anyc?money(gc):""}</td><td colspan="2"></td>`:`<td class="tot r">${tot==null?"":fmt(tot,1)+" "+units[0]}</td>`}</tr>`;
     if(!shut)rows.forEach(l=>{
       const [lab,cls]=STT[l.st];
-      h+=`<tr class="l ${l.id===st.sel?"sel":""}" data-id="${l.id}" style="--n:${n++}"><td class="mk" title="${esc(l.mk)}">${esc(l.mk)}</td><td class="ds" ${l.lk?`data-lk="${esc(l.lk)}" title="Double-click to name this markup"`:`title="${esc(l.ds)}"`}>${l.hex?`<i style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:${esc(l.hex)}"></i>`:""}${esc(l.ds)}</td><td class="r num">${fmt(l.q)} <span class="u">${l.u}</span></td>${PRICING.on?`<td class="r num">${rateCell(l)}</td><td class="r num" title="${costOf(l)==null?"":`Materials ${matCost(l)==null?"none":money(matCost(l))}. Labour ${labHours(l)==null?"none":fmt(labHours(l),1)+" hrs"+(labCost(l)==null?", no labour rate":" = "+money(labCost(l)))}`}">${costOf(l)==null?`<span style="color:var(--ink-3)">&mdash;</span>`:fmt(costOf(l))}</td>`:`<td class="dm num hide-s">${l.dm}</td>`}<td>${agCell(l)}</td><td><span class="stt ${cls}"><span class="dot"></span>${lab}</span></td></tr>`;
+      h+=`<tr class="l ${l.id===st.sel?"sel":""}" data-id="${l.id}" style="--n:${n++}"><td class="mk" title="${esc(l.mk)}">${esc(l.mk)}</td><td class="ds" ${l.lk?`data-lk="${esc(l.lk)}" title="Double-click to name this markup"`:`title="${esc(l.ds)}"`}>${l.hex?`<i style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:${esc(l.hex)}"></i>`:""}${esc(l.ds)}${dupBadge(l)}</td><td class="r num">${fmt(l.q)} <span class="u">${l.u}</span></td>${PRICING.on?`<td class="r num">${rateCell(l)}</td><td class="r num" title="${costOf(l)==null?"":`Materials ${matCost(l)==null?"none":money(matCost(l))}. Labour ${labHours(l)==null?"none":fmt(labHours(l),1)+" hrs"+(labCost(l)==null?", no labour rate":" = "+money(labCost(l)))}`}">${costOf(l)==null?`<span style="color:var(--ink-3)">&mdash;</span>`:fmt(costOf(l))}</td>`:`<td class="dm num hide-s">${l.dm}</td>`}<td>${agCell(l)}</td><td><span class="stt ${cls}"><span class="dot"></span>${lab}</span></td></tr>`;
     });
   });
   if(n===0)h+=LINES.length===0
@@ -846,7 +863,7 @@ function renderTable(){
 }
 function renderChips(){
   const all=LINES.length, rev=LINES.filter(l=>l.st!=="ok").length, ver=all-rev;
-  $("#chips").innerHTML=[["all","All",all],["disp","AI disagrees",LINES.filter(l=>l.ag==="disputed"||l.ag==="ai_only").length],["review","To check",rev],["verified","Verified",ver]].map(([k,t,c])=>`<button class="chip ${st.filter===k?"on":""}" data-f="${k}">${t}<b>${c}</b></button>`).join("");
+  $("#chips").innerHTML=[["all","All",all],["disp","AI disagrees",LINES.filter(l=>l.ag==="disputed"||l.ag==="ai_only").length],["review","To check",rev],["verified","Verified",ver],...(LINES.some(l=>l.dup&&l.dup.length)?[["dups","Possible duplicates",LINES.filter(l=>l.dup&&l.dup.length).length]]:[])].map(([k,t,c])=>`<button class="chip ${st.filter===k?"on":""}" data-f="${k}">${t}<b>${c}</b></button>`).join("");
 }
 function renderSummary(){
   const ver=LINES.filter(l=>l.st==="ok").length;
@@ -1268,7 +1285,9 @@ $("#shMake").onclick=async()=>{
   }catch(e){res.innerHTML=`<div class="hint" style="color:var(--accent)">${e.message}</div>`}
   b.disabled=false;b.textContent="Create link";
 };
-if(QD_USER&&QD_USER!=="local"){const lo=$("#logoutBtn");lo.hidden=false;lo.title="Sign out "+QD_USER;lo.onclick=async()=>{await fetch("/logout",{method:"POST"});location.href="/login"}}
+if(QD_USER&&QD_USER!=="local"){const lo=$("#logoutBtn");lo.hidden=false;lo.title="Sign out "+QD_NAME;
+  const nb=$("#nameBtn");nb.hidden=false;nb.onclick=async()=>{const v=prompt("Your name, as your teammates should see it:",QD_NAME===QD_USER?"":QD_NAME);if(v===null)return;
+    try{const r=await fetch("/api/me/name",{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":(document.querySelector('meta[name="csrf-token"]')||{}).content||""},body:JSON.stringify({name:v})});const j=await r.json();if(!r.ok){alert(j.error||"Could not save the name.");return}location.reload()}catch(e){alert("Could not save the name.")}};lo.onclick=async()=>{await fetch("/logout",{method:"POST"});location.href="/login"}}
 
 /* --- pop-out window: the same page with ?plan=1. Both windows edit one shared document over a BroadcastChannel,
        so you can measure in the pop-out and watch the table update in the main window (and the reverse). --- */
@@ -1460,9 +1479,13 @@ async function boot(){
   $("#demoBtn").textContent=DEMO_AI?"Hide demo AI check":"Demo AI check";
   if(DEMO_AI){const el=$("#saveLbl");if(el)el.textContent="Demo AI data, not saved"}
   try{const pr=await (await fetch("/api/projects")).json();
-    const me=QD_USER,mine=lsGet("qd-projects")==="mine"&&!!me,list=mine?pr.filter(p=>p.owner===me):pr;
+    const me=QD_USER,mine=lsGet("qd-projects")==="mine"&&!!me,arch=lsGet("qd-archived")==="1";
+    const scoped=mine?pr.filter(p=>p.owner===me):pr,nArch=scoped.filter(p=>p.archived).length,list=scoped.filter(p=>!!p.archived===arch);
     $("#recent").innerHTML=`<div class="ptoggle" role="group" aria-label="Which projects to list"><button data-pf="all" class="${mine?"":"on"}">All</button><button data-pf="mine" class="${mine?"on":""}">My projects</button></div>`
-      +(list.length?list.map(p=>`<a href="?project=${encodeURIComponent(p.id)}" style="${p.id===PID?"font-weight:600":""}">${esc(p.name)} <span class="num">${esc(p.note)}${p.owner?" &middot; "+esc(p.owner):""}</span></a>`).join(""):`<div class="pnone">You haven't created a project yet.</div>`);
+      +`<div class="ptoggle sub" role="group" aria-label="Active or archived"><button data-pa="0" class="${arch?"":"on"}">Active</button><button data-pa="1" class="${arch?"on":""}">Archived${nArch?" ("+nArch+")":""}</button></div>`
+      +(list.length?list.map(p=>`<div class="prow"><a href="?project=${encodeURIComponent(p.id)}" style="${p.id===PID?"font-weight:600":""}">${esc(p.name)} <span class="num">${esc(p.note)}${p.owner?" &middot; "+esc(p.owner_name||p.owner):""}</span></a>${p.sample?"":`<button data-arch="${esc(p.id)}" data-to="${arch?0:1}" title="${arch?"Move back to the active list":"Move out of the active list. Nothing is deleted."}">${arch?"Restore":"Archive"}</button>`}</div>`).join(""):`<div class="pnone">${arch?"No archived projects.":"You haven't created a project yet."}</div>`);
+    $$("#recent [data-pa]").forEach(b=>b.onclick=()=>{lsSet("qd-archived",b.dataset.pa);location.reload()});
+    $$("#recent [data-arch]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{const r=await fetch(`/api/project/${encodeURIComponent(b.dataset.arch)}/archive`,{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":(document.querySelector('meta[name="csrf-token"]')||{}).content||""},body:JSON.stringify({archived:b.dataset.to==="1"})});if(!r.ok)throw 0;location.reload()}catch(e){b.disabled=false;b.textContent="Failed, retry"}});
     $$("#recent [data-pf]").forEach(b=>b.onclick=()=>{lsSet("qd-projects",b.dataset.pf);location.reload()})}catch(e){}
   {const up=!!(PROJ.id&&!PROJ.sample);const rb=document.getElementById("readBtn"),ab=document.getElementById("aiBtn");if(rb)rb.hidden=!up;if(ab)ab.hidden=!(up&&LINES.length)}
   if(empty)go("upload");else if(!LINES.length)go("review");
@@ -1478,21 +1501,26 @@ if(IS_POP){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on'
     {t:"Welcome",b:"A quick tour of the buttons. Rules measure first, AI cross-checks, and you verify last. It takes under a minute."},
     {view:"upload",sel:"#pickPdf",t:"Upload plans",b:"Choose one or more plan PDFs. Each page is read and its scale is detected from the title block."},
     {sel:'[data-go="upload"]',t:"Projects",b:"Switch between projects, or start a new one by uploading plans."},
+    {view:"upload",sel:".recent",t:"Archive finished jobs",b:"Archive moves a finished project out of the Active list. Nothing is deleted, and it stays fully editable. Open the Archived tab any time to find it again or Restore it."},
     {view:"review",sel:'[data-go="review"]',t:"Takeoff",b:"The working screen: your lines on the left, the plan on the right. Pick a line, then draw it on the plan."},
     {sel:"#scEnt",t:"Scale",b:"Each sheet's scale must be confirmed before you can measure. Confirm the detected scale, or type your own."},
+    {view:"review",sel:"#readBtn",t:"Read markups",b:"Pulls the legend quantities off the marked-up plans using the app's own rules, no AI. Each result still needs your check."},
+    {sel:"#aiBtn",t:"AI check",b:"A real second opinion: lines the AI disagrees with are flagged for you to look at first. It never changes a quantity. Needs the AI service to be set up."},
     {sel:"#popBtn",t:"Pop out",b:"Opens the plan in its own window for a second screen. Both windows stay in sync."},
     {sel:'[data-go="pricing"]',t:"Pricing (optional)",b:"Only when the client wants costs: load a price list and rates are matched to lines. Off by default."},
     {sel:"#shareBtn",t:"Share link",b:"Creates a private download link for the client, with an expiry. They need no account."},
     {sel:"#exportBtn",t:"Export workbook",b:"Downloads the takeoff with live formulas. To use a client's own Excel instead, use Fill template."},
+    {sel:"#nameBtn",t:"Your name",b:"Set the name your teammates see on projects and shared links, instead of your email."},
     {sel:"#helpBtn",t:"Need this again?",b:"Press this ? button any time to replay the tour."}
   ];
   const root=document.getElementById("tour");if(!root)return;
   const spot=root.querySelector(".spot"),tip=root.querySelector(".tip"),q=s=>tip.querySelector(s);
   let list=[],i=0;
   const vis=e=>e&&e.getClientRects().length>0;
+  const nav=v=>{try{if(typeof go==="function")go(v)}catch(e){}};          // a screen that fails to draw must not strand the tour half-open
   const seen=()=>{try{localStorage.setItem("qd-guide-seen","1")}catch(e){}};
   function show(){
-    const st=list[i];if(st.view&&typeof go==="function")go(st.view);
+    const st=list[i];if(st.view)nav(st.view);
     const el=st.sel?document.querySelector(st.sel):null,has=vis(el);
     q(".tk").textContent=`${i+1} of ${list.length}`;q("h3").textContent=st.t;q("p").textContent=st.b;
     q("[data-tback]").style.visibility=i?"visible":"hidden";q("[data-tnext]").textContent=i===list.length-1?"Done":"Next";
@@ -1506,12 +1534,13 @@ if(IS_POP){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on'
     }else{spot.style.display="none";tip.style.left=(W-tw)/2+"px";tip.style.top=(H-th)/2+"px"}
   }
   function start(){
-    list=STEPS.filter(s=>true);i=0;root.classList.add("on");
+    if(!PROJ)return;                                                     // project still loading: nothing to point at yet
     // keep steps whose button exists on its screen; welcome and the final ? step always stay
-    const keep=[];for(const s of STEPS){if(!s.sel){keep.push(s);continue}if(s.view&&typeof go==="function")go(s.view);if(vis(document.querySelector(s.sel)))keep.push(s)}
-    list=keep;i=0;show();
+    const keep=[];for(const s of STEPS){if(!s.sel){keep.push(s);continue}if(s.view)nav(s.view);if(vis(document.querySelector(s.sel)))keep.push(s)}
+    list=keep;i=0;
+    try{root.classList.add("on");show()}catch(e){root.classList.remove("on")}
   }
-  function end(){seen();root.classList.remove("on");if(typeof go==="function")go(PROJ&&PROJ.id?"review":"upload")}
+  function end(){seen();root.classList.remove("on");nav(PROJ&&PROJ.id?"review":"upload")}
   tip.querySelector("[data-tnext]").onclick=()=>{if(i===list.length-1)end();else{i++;show()}};
   tip.querySelector("[data-tback]").onclick=()=>{if(i){i--;show()}};
   tip.querySelector(".tskip").onclick=end;
@@ -1519,7 +1548,7 @@ if(IS_POP){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on'
   addEventListener("resize",()=>{if(root.classList.contains("on"))show()});
   const hb=document.getElementById("helpBtn");if(hb)hb.onclick=start;
   window.qdTour=start;
-  if(!IS_POP){let done=false;try{done=localStorage.getItem("qd-guide-seen")==="1"}catch(e){}if(!done)setTimeout(start,900)}
+  if(!IS_POP){let done=false;try{done=localStorage.getItem("qd-guide-seen")==="1"}catch(e){}if(!done)setTimeout(()=>Promise.resolve(window.qdBooted).then(start),900)}
 })();
 
 /* --- installable app (PWA): the browser offers install; this button appears when it can --- */
@@ -1572,7 +1601,7 @@ document.addEventListener("dblclick",async e=>{
   const r=await fetch(`/api/project/${PID}/label`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:td.dataset.lk,label:name.trim()})});
   if(r.ok)location.reload();
 });
-boot();
+window.qdBooted=boot();
 </script>
 </body>
 </html>
