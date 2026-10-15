@@ -1744,6 +1744,7 @@ if(BC)BC.onmessage=e=>{
   if(m.type==="hello"){BC.postMessage({type:"state",from:ME,doc:JSON.parse(JSON.stringify(buildState()))})}
   else if(m.type==="state")applyRemote(m.doc);
   else if(m.type==="bye"&&!IS_POP)dock();
+  else if(m.type==="reloaded"){try{sessionStorage.setItem("qd-quiet","1")}catch(x){}location.reload()}      // the other window reloaded with new lines or items: take them too, without echoing back
 };
 function openPop(){
   popWin=window.open(location.pathname+"?plan=1&project="+encodeURIComponent(PID)+(DEMO_AI?"&demo_ai=1":""),"quantidawn-plan","popup=yes,width=1280,height=860");
@@ -2105,6 +2106,9 @@ document.addEventListener("dblclick",async e=>{
 
 window.qdBooted=boot();
 window.qdBooted.then(()=>{
+  // tell the other window (Pop out or main) that this one just loaded fresh data, unless it only reloaded because that window asked it to
+  {let quiet=false;try{quiet=sessionStorage.getItem("qd-quiet")==="1";sessionStorage.removeItem("qd-quiet")}catch(e){}
+   if(BC&&PROJ&&PROJ.id&&!quiet)BC.postMessage({type:"reloaded",from:ME})}
   try{const t=JSON.parse(sessionStorage.getItem("qd-toast")||"null");sessionStorage.removeItem("qd-toast");if(t)showToast(t[0],t[1])}catch(e){}
   try{const r=JSON.parse(sessionStorage.getItem("qd-readsum")||"null");sessionStorage.removeItem("qd-readsum");
     if(r){const o=readOutcome({lines:LINES.filter(l=>!l.it).length,skipped:(SKIPPED||[]).length,found:r.found,measured:r.measured,kind:r.kind});showToast(o.msg,o.kind)}}catch(e){}
