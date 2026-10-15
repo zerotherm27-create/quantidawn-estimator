@@ -406,6 +406,20 @@ def name_markup(pid):
     return jsonify(ok=True)
 
 
+@app.get("/api/project/<pid>/markup-mask/<int:n>/<key>.png")
+def markup_mask(pid, n, key):
+    """Where a colour-measured group is on its sheet: a transparent PNG with only that group's pixels painted, drawn over the plan
+    when its line is selected, so nobody has to guess which colour a line is."""
+    check_id(pid)
+    if not re.match(r"^c\d{1,6}$", key):
+        abort(400)
+    pdf, idx = page_source(pid, n)
+    png = logic_reader.colour_group_mask(pdf, idx, key)
+    if png is None:
+        abort(404)
+    return Response(png, mimetype="image/png", headers={"Cache-Control": "private, max-age=3600"})
+
+
 @app.delete("/api/project/<pid>/read")
 def clear_markups(pid):
     check_id(pid)

@@ -894,7 +894,7 @@ function renderDrawer(){
   const l=LINES.find(x=>x.id===st.sel);if(!l){$("#drawer").innerHTML="";return}
   $("#drawer").innerHTML=`
    <div><h3>${esc(l.mk)}, ${esc(l.ds)}</h3>
-     <div class="basis">basis <b>${l.basis}</b><br>result <b>${fmt(l.q)} ${l.u}</b> &middot; ${MEAS[l.el]&&MEAS[l.el].length?`<b>measured on plan</b> (${MEAS[l.el].length} shape${MEAS[l.el].length>1?"s":""})<a class="mlink" id="clrM">clear</a>`:(l.el<0?"added by the AI":"from sheet "+SHEETS[l.sheet-1].n+" legend")}</div></div>
+     <div class="basis">basis <b>${l.basis}</b><br>result <b>${fmt(l.q)} ${l.u}</b> &middot; ${MEAS[l.el]&&MEAS[l.el].length?`<b>measured on plan</b> (${MEAS[l.el].length} shape${MEAS[l.el].length>1?"s":""})<a class="mlink" id="clrM">clear</a>`:(l.el<0?"added by the AI":l.lk?"measured from the colour on sheet "+SHEETS[l.sheet-1].n+"; its pixels are shown in <b style=\"color:#e600b8\">magenta</b> on the plan":"from sheet "+SHEETS[l.sheet-1].n+" legend")}</div></div>
    <div class="fld">
      ${[["Length","L"],["Width","W"],["Height","H"],["Area","A"],["Count","N"],[l.calc==="bar"?"kg/m":"kg/m2","K"],["Openings","O"],["Factor","R"]].filter(([t,k])=>l.n[k]!=null&&!(k==="N"&&l.mt!=="count"&&l.n.N===1)).map(([t,k])=>`<label>${t}<input class="num" data-k="${k}" value="${l.n[k]}" inputmode="decimal"></label>`).join("")}
    </div>
@@ -1053,6 +1053,8 @@ function drawOverlays(){
       :`<rect x="${o.pts[0]}" y="${o.pts[1]}" width="${o.pts[2]}" height="${o.pts[3]}" fill="none" stroke="${o.stroke||"var(--accent)"}" stroke-width="2"/>`});
   if(V.flash&&V.flash.page===V.page){const [x,y,w,hh]=V.flash.box;
     h+=`<rect class="src" x="${x-2}" y="${y-1.5}" width="${w+4}" height="${hh+3}" rx="1.5" fill="rgba(217,83,30,.14)" stroke="var(--accent)" stroke-width="${(2/V.k).toFixed(2)}"/>`}
+  const cl=curLine();     // a colour-measured line: paint exactly the pixels it was measured from, so no one has to guess which colour it is
+  if(cl&&cl.lk&&PID&&cl.sheet-1===V.page)h+=`<image href="/api/project/${PID}/markup-mask/${cl.sheet}/${cl.lk.replace(/^\d+/,"")}.png" x="0" y="0" width="${PAGE_W}" height="${PAGE_H}" preserveAspectRatio="none" style="pointer-events:none"/>`;
   const col=id=>id===curEl()?"var(--accent)":"var(--ink-2)";
   Object.entries(MEAS).forEach(([id,list])=>list.forEach((sh,si)=>{if(sh.page!==V.page)return;
     const isSel=SELS.el===+id&&SELS.idx===si;
@@ -1133,7 +1135,7 @@ function applyFocus(){
   renderTools();
   if(!IS_POP&&document.querySelector(".left.out"))return;           // the plan is in the pop-out window right now
   if(V.lastSel===l.id)return;
-  V.lastSel=l.id;SELS.el=null;SELS.idx=null;renderTools();
+  V.lastSel=l.id;SELS.el=null;SELS.idx=null;renderTools();drawOverlays();
   const sh=(MEAS[l.el]||[])[0];
   if(sh){const xs=sh.pts.map(q=>q[0]),ys=sh.pts.map(q=>q[1]),x=Math.min(...xs),y=Math.min(...ys);
     flyTo(sh.page,[x-30,y-30,Math.max(...xs)-x+60,Math.max(...ys)-y+60]);return}
