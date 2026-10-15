@@ -581,7 +581,8 @@ def room_outline(pid):
 @app.delete("/api/project/<pid>/read")
 def clear_markups(pid):
     check_id(pid)
-    for coll in ("entries", "ai", "labels", "merges"):
+    colls = ("entries", "ai", "labels", "merges") + (("ignore",) if request.args.get("all") else ())   # a fresh Read keeps clean-up boxes; Reset (all=1) drops them too
+    for coll in colls:
         get_store().doc_delete(coll, pid)
     return jsonify(ok=True)
 
