@@ -193,6 +193,8 @@ tr.l{cursor:pointer;transition:background .15s;animation:rise .45s var(--ease) b
 tr.l:hover td{background:var(--line-2)}
 tr.l.sel td{background:var(--accent-soft)}
 tr.l.sel td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
+tr.l.pick td{background:var(--accent-soft)}
+tr.l.pick td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 td.mk{font:500 12px var(--mono);width:78px;max-width:112px;overflow:hidden;text-overflow:ellipsis}
 td.ds{max-width:170px;overflow:hidden;text-overflow:ellipsis;color:var(--ink)}
 td.ds small{color:var(--ink-3);margin-left:6px}
@@ -619,7 +621,7 @@ let PID=QS.get("project")||"boxshall";
 const DEMO_AI=QS.has("demo_ai");
 let PROJ=null,GROUPS=[],LINES=[],SKIPPED=[],SHEETS=[],SCALES=[];
 const AG_PRI={disputed:0,ai_only:1,unconfirmed:2,unrun:3,agreed:3,resolved:3};
-const MEAS={}, TOOL={on:false,pts:[]}, SELS={el:null,idx:null};   // MEAS is keyed by element: one drawn shape feeds every line of that element
+const MEAS={}, TOOL={on:false,pts:[]}, SELS={el:null,idx:null}, PICK=new Set(), CLEAN={on:false,pts:[]};   // PICK: colour lines ticked to combine; CLEAN: drawing a clean-up box   // MEAS is keyed by element: one drawn shape feeds every line of that element
 let DRAG=null;
 const MT_NAME={len:"length",area:"area",count:"count"};
 const base=n=>n.A!=null?n.A:(n.L||0)*(n.W||0)*(n.N==null?1:n.N);
@@ -670,21 +672,67 @@ function liveText(){
   const how=l.mt==="count"?"Click each item":l.mt==="len"?"Click along the run, double-click to finish":"Click corners, double-click to close";
   return `Measuring <b>${l.mk}</b> by ${MT_NAME[l.mt]}: <b>${l.mt==="count"?v:v.toFixed(2)} ${u}</b><br>${how}. Esc cancels, Backspace undoes`;
 }
+/* --- clean up: leave an area out of colour reading; combine: add several colour lines into one --- */
+const boxesOn=()=>((PROJ&&PROJ.ignore)||{})[V.page+1]||[];
+const jsonH={"Content-Type":"application/json"};
+function cancelClean(){CLEAN.on=false;CLEAN.pts=[];renderTools();drawOverlays()}
+async function rereadSheet(n){      // colour reading of one sheet again, so the cleaned area takes effect
+  const r=await fetch(`/api/project/${PID}/read`,{method:"POST",headers:jsonH,body:JSON.stringify({page:n,ratio:(SCALES[n-1]||{}).ratio})});
+  if(!r.ok)throw new Error("Could not read sheet "+n+" again");
+}
+async function cleanRequest(body){
+  const n=V.page+1;
+  try{
+    const r=await fetch(`/api/project/${PID}/ignore`,{method:"PUT",headers:jsonH,body:JSON.stringify({page:n,...body})});
+    if(!r.ok)throw new Error("Could not save the clean-up area");
+    if(!(SCALES[n-1]||{}).ratio){alert("Saved. Set this sheet's scale (Enter scale), then press Read markups so the colours are measured without that area.");location.reload();return}
+    await rereadSheet(n);location.reload();
+  }catch(e){alert(e.message);cancelClean()}
+}
+function addCleanBox(){
+  const [a,b]=CLEAN.pts,cl=v=>Math.min(1,Math.max(0,v));
+  const box=[cl(Math.min(a[0],b[0])/PAGE_W),cl(Math.min(a[1],b[1])/PAGE_H),cl(Math.max(a[0],b[0])/PAGE_W),cl(Math.max(a[1],b[1])/PAGE_H)];
+  cleanRequest({box});
+}
+function resetClean(){if(confirm("Bring back every area left out on this sheet and read its colours again?"))cleanRequest({clear:true})}
+async function combinePicked(){
+  const keys=[...PICK].map(id=>(LINES.find(x=>x.id===id)||{}).lk).filter(Boolean);
+  const r=await fetch(`/api/project/${PID}/merge`,{method:"PUT",headers:jsonH,body:JSON.stringify({keys})});
+  let j={};try{j=await r.json()}catch(e){}
+  if(!r.ok){alert(j.error||"Could not combine these lines.");return}
+  location.reload();
+}
+async function splitCombined(){
+  const l=curLine();if(!l||!l.mem)return;
+  const r=await fetch(`/api/project/${PID}/merge`,{method:"PUT",headers:jsonH,body:JSON.stringify({split:l.lk})});
+  if(r.ok)location.reload();else alert("Could not split this line.");
+}
 function renderTools(){
   const el=$("#tools2");if(!el)return;
   const l=curLine();
   const dis=!toolOK()||!l;
   const E=curEl();
-  el.innerHTML=TOOL.on
+  el.innerHTML=CLEAN.on
+    ?`<button class="btn" id="tCleanCan">Cancel</button><div class="meas">Click two opposite corners of the area to leave out, such as a logo, a stamp or the title block${CLEAN.pts.length?" (1 of 2 set)":""}.<br>Esc cancels</div>`
+    :TOOL.on
     ?`<button class="btn live" id="tFin">Finish</button><button class="btn" id="tCan">Cancel</button><div class="meas">${liveText()}</div>`
     :`<button class="btn" id="tMeas" ${dis?"disabled":""} title="${!scaleOk(V.page)?"Confirm this sheet's scale first":"Draw on the plan to set the quantity"}"><svg class="i" viewBox="0 0 16 16"><path d="M2 12l3-3 2 2 5-6M2 14h12"/></svg>Measure ${l?l.mk+" ("+MT_NAME[l.mt]+")":""}</button>`
      +(SELS.el!=null?`<button class="btn" id="tDel">Delete shape <span class="kbd">Del</span></button>`:"")
-     +(MEAS[E]&&MEAS[E].length?`<span class="meas">${MEAS[E].length} shape${MEAS[E].length>1?"s":""} on this element${SELS.el==null?". Click a shape to select, drag a corner to adjust":""}</span>`:"");
+     +(MEAS[E]&&MEAS[E].length?`<span class="meas">${MEAS[E].length} shape${MEAS[E].length>1?"s":""} on this element${SELS.el==null?". Click a shape to select, drag a corner to adjust":""}</span>`:"")
+     +(PROJ&&!PROJ.sample&&PID?`<button class="btn" id="tClean" title="Drag out an area to leave out of colour reading, such as a logo or title block"><svg class="i" viewBox="0 0 16 16"><path d="M2.500 2.500h11v11h-11zM5 11l6-6"/></svg>Clean up area</button>`:"")
+     +(boxesOn().length?`<button class="btn" id="tCleanReset" title="Bring back the areas left out on this sheet">Reset clean-up (${boxesOn().length})</button>`:"")
+     +(PICK.size>1?`<button class="btn live" id="tComb">Combine ${PICK.size} lines</button>`:"")
+     +(l&&l.mem&&!PICK.size?`<button class="btn" id="tSplit">Split combined line</button>`:"");
   const a=$("#tMeas");if(a)a.onclick=startMeasure;
   const f=$("#tFin");if(f)f.onclick=finishShape;
   const dl=$("#tDel");if(dl)dl.onclick=deleteShape;
   const c=$("#tCan");if(c)c.onclick=cancelMeasure;
-  $("#plan").classList.toggle("tool",TOOL.on);
+  const tc=$("#tClean");if(tc)tc.onclick=()=>{CLEAN.on=true;CLEAN.pts=[];renderTools();drawOverlays()};
+  const tcc=$("#tCleanCan");if(tcc)tcc.onclick=cancelClean;
+  const tcr=$("#tCleanReset");if(tcr)tcr.onclick=resetClean;
+  const tb=$("#tComb");if(tb)tb.onclick=combinePicked;
+  const ts=$("#tSplit");if(ts)ts.onclick=splitCombined;
+  $("#plan").classList.toggle("tool",TOOL.on||CLEAN.on);
 }
 function startMeasure(){
   const l=curLine();if(!l||!toolOK())return;
@@ -852,7 +900,7 @@ function renderTable(){
     h+=`<tr class="g ${shut?"shut":""}" data-g="${gi}" style="top:30px"><td colspan="4"><svg class="i chev" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg>${g.toUpperCase()} <span style="color:var(--ink-3);font-weight:400;margin-left:6px">${rows.length} lines</span></td>${PRICING.on?`<td class="tot r">${anyc?money(gc):""}</td><td colspan="2"></td>`:`<td class="tot r">${tot==null?"":fmt(tot,1)+" "+units[0]}</td>`}</tr>`;
     if(!shut)rows.forEach(l=>{
       const [lab,cls]=STT[l.st];
-      h+=`<tr class="l ${l.id===st.sel?"sel":""}" data-id="${l.id}" style="--n:${n++}"><td class="mk" title="${esc(l.mk)}">${esc(l.mk)}</td><td class="ds" ${l.lk?`data-lk="${esc(l.lk)}" title="Double-click to name this markup"`:`title="${esc(l.ds)}"`}>${l.hex?`<i style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:${esc(l.hex)}"></i>`:""}${esc(l.ds)}${dupBadge(l)}</td><td class="r num">${fmt(l.q)} <span class="u">${l.u}</span></td>${PRICING.on?`<td class="r num">${rateCell(l)}</td><td class="r num" title="${costOf(l)==null?"":`Materials ${matCost(l)==null?"none":money(matCost(l))}. Labour ${labHours(l)==null?"none":fmt(labHours(l),1)+" hrs"+(labCost(l)==null?", no labour rate":" = "+money(labCost(l)))}`}">${costOf(l)==null?`<span style="color:var(--ink-3)">&mdash;</span>`:fmt(costOf(l))}</td>`:`<td class="dm num hide-s">${l.dm}</td>`}<td>${agCell(l)}</td><td><span class="stt ${cls}"><span class="dot"></span>${lab}</span></td></tr>`;
+      h+=`<tr class="l ${l.id===st.sel?"sel":""} ${PICK.has(l.id)?"pick":""}" data-id="${l.id}" style="--n:${n++}"><td class="mk" title="${esc(l.mk)}">${esc(l.mk)}</td><td class="ds" ${l.lk?`data-lk="${esc(l.lk)}" title="Double-click to name this markup"`:`title="${esc(l.ds)}"`}>${l.hex?`<i style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:${esc(l.hex)}"></i>`:""}${esc(l.ds)}${dupBadge(l)}</td><td class="r num">${fmt(l.q)} <span class="u">${l.u}</span></td>${PRICING.on?`<td class="r num">${rateCell(l)}</td><td class="r num" title="${costOf(l)==null?"":`Materials ${matCost(l)==null?"none":money(matCost(l))}. Labour ${labHours(l)==null?"none":fmt(labHours(l),1)+" hrs"+(labCost(l)==null?", no labour rate":" = "+money(labCost(l)))}`}">${costOf(l)==null?`<span style="color:var(--ink-3)">&mdash;</span>`:fmt(costOf(l))}</td>`:`<td class="dm num hide-s">${l.dm}</td>`}<td>${agCell(l)}</td><td><span class="stt ${cls}"><span class="dot"></span>${lab}</span></td></tr>`;
     });
   });
   if(n===0)h+=LINES.length===0
@@ -894,7 +942,7 @@ function renderDrawer(){
   const l=LINES.find(x=>x.id===st.sel);if(!l){$("#drawer").innerHTML="";return}
   $("#drawer").innerHTML=`
    <div><h3>${esc(l.mk)}, ${esc(l.ds)}</h3>
-     <div class="basis">basis <b>${l.basis}</b><br>result <b>${fmt(l.q)} ${l.u}</b> &middot; ${MEAS[l.el]&&MEAS[l.el].length?`<b>measured on plan</b> (${MEAS[l.el].length} shape${MEAS[l.el].length>1?"s":""})<a class="mlink" id="clrM">clear</a>`:(l.el<0?"added by the AI":l.lk?"measured from the colour on sheet "+SHEETS[l.sheet-1].n+"; its pixels are shown in <b style=\"color:#e600b8\">magenta</b> on the plan":"from sheet "+SHEETS[l.sheet-1].n+" legend")}</div></div>
+     <div class="basis">basis <b>${l.basis}</b><br>result <b>${fmt(l.q)} ${l.u}</b> &middot; ${MEAS[l.el]&&MEAS[l.el].length?`<b>measured on plan</b> (${MEAS[l.el].length} shape${MEAS[l.el].length>1?"s":""})<a class="mlink" id="clrM">clear</a>`:(l.el<0?"added by the AI":l.lk?"measured from the colour on sheet "+SHEETS[l.sheet-1].n+"; its pixels are shown in <b style=\"color:#e600b8\">magenta</b> on the plan. Ctrl or Cmd-click other colour lines to combine them":"from sheet "+SHEETS[l.sheet-1].n+" legend")}</div></div>
    <div class="fld">
      ${[["Length","L"],["Width","W"],["Height","H"],["Area","A"],["Count","N"],[l.calc==="bar"?"kg/m":"kg/m2","K"],["Openings","O"],["Factor","R"]].filter(([t,k])=>l.n[k]!=null&&!(k==="N"&&l.mt!=="count"&&l.n.N===1)).map(([t,k])=>`<label>${t}<input class="num" data-k="${k}" value="${l.n[k]}" inputmode="decimal"></label>`).join("")}
    </div>
@@ -1054,7 +1102,11 @@ function drawOverlays(){
   if(V.flash&&V.flash.page===V.page){const [x,y,w,hh]=V.flash.box;
     h+=`<rect class="src" x="${x-2}" y="${y-1.5}" width="${w+4}" height="${hh+3}" rx="1.5" fill="rgba(217,83,30,.14)" stroke="var(--accent)" stroke-width="${(2/V.k).toFixed(2)}"/>`}
   const cl=curLine();     // a colour-measured line: paint exactly the pixels it was measured from, so no one has to guess which colour it is
-  if(cl&&cl.lk&&PID&&cl.sheet-1===V.page)h+=`<image href="/api/project/${PID}/markup-mask/${cl.sheet}/${cl.lk.replace(/^\d+/,"")}.png" x="0" y="0" width="${PAGE_W}" height="${PAGE_H}" preserveAspectRatio="none" style="pointer-events:none"/>`;
+  if(cl&&cl.lk&&PID&&cl.sheet-1===V.page)h+=`<image href="/api/project/${PID}/markup-mask/${cl.sheet}/${(cl.mem||[cl.lk]).map(k=>k.replace(/^\d+/,"")).join("-")}.png" x="0" y="0" width="${PAGE_W}" height="${PAGE_H}" preserveAspectRatio="none" style="pointer-events:none"/>`;
+  boxesOn().forEach(b=>{const x=b[0]*PAGE_W,y=b[1]*PAGE_H;      // areas a person left out of colour reading
+    h+=`<rect x="${x}" y="${y}" width="${(b[2]-b[0])*PAGE_W}" height="${(b[3]-b[1])*PAGE_H}" fill="rgba(120,120,130,.16)" stroke="var(--ink-3)" stroke-width="${(1.5/V.k).toFixed(2)}" stroke-dasharray="${(6/V.k).toFixed(1)} ${(4/V.k).toFixed(1)}" pointer-events="none"/>`
+      +`<text x="${x+4/V.k}" y="${y+14/V.k}" font-size="${(11/V.k).toFixed(2)}" font-family="Geist Mono,monospace" fill="var(--ink-3)" pointer-events="none">left out</text>`});
+  if(CLEAN.on&&CLEAN.pts.length)CLEAN.pts.forEach(q=>h+=`<circle cx="${q[0]}" cy="${q[1]}" r="${(5/V.k).toFixed(2)}" fill="var(--surface)" stroke="var(--accent)" stroke-width="${(2/V.k).toFixed(2)}"/>`);
   const col=id=>id===curEl()?"var(--accent)":"var(--ink-2)";
   Object.entries(MEAS).forEach(([id,list])=>list.forEach((sh,si)=>{if(sh.page!==V.page)return;
     const isSel=SELS.el===+id&&SELS.idx===si;
@@ -1100,7 +1152,7 @@ function renderPlan(){
     const toPage=e=>{const r=el.getBoundingClientRect();return[(e.clientX-r.left-V.x)/V.k,(e.clientY-r.top-V.y)/V.k]};
     el.addEventListener("pointerdown",e=>{
       if(e.target.closest(".vctl,.tools2"))return;
-      if(!TOOL.on&&!CAL.on){const v=findVertex(toPage(e));if(v){DRAG={...v,moved:false};el.setPointerCapture(e.pointerId);el.classList.add("drag");return}}
+      if(!TOOL.on&&!CAL.on&&!CLEAN.on){const v=findVertex(toPage(e));if(v){DRAG={...v,moved:false};el.setPointerCapture(e.pointerId);el.classList.add("drag");return}}
       d={x:e.clientX,y:e.clientY,ox:V.x,oy:V.y};el.setPointerCapture(e.pointerId);el.classList.add("drag")});
     el.addEventListener("pointermove",e=>{
       if(DRAG){const sh=MEAS[DRAG.el][DRAG.si];sh.pts[DRAG.vi]=toPage(e);DRAG.moved=true;
@@ -1110,7 +1162,7 @@ function renderPlan(){
     ["pointerup","pointercancel"].forEach(t=>el.addEventListener(t,e=>{
       if(DRAG){const m=DRAG.moved;DRAG=null;el.classList.remove("drag");if(m){renderAll();renderTools();drawOverlays()}return}
       const moved=d?Math.hypot(e.clientX-d.x,e.clientY-d.y):99;
-      if(d&&!TOOL.on&&!CAL.on&&moved<4&&e.type==="pointerup"){
+      if(d&&!TOOL.on&&!CAL.on&&!CLEAN.on&&moved<4&&e.type==="pointerup"){
         const hit=findShape(toPage(e));
         if(hit){SELS.el=hit.el;SELS.idx=hit.idx;const c=curLine();
           if(!c||c.el!==hit.el){const nl=LINES.find(x=>x.el===hit.el);if(nl){st.sel=nl.id;V.lastSel=nl.id}}
@@ -1119,6 +1171,10 @@ function renderPlan(){
       }
       if(d&&TOOL.on&&moved<4&&e.type==="pointerup"){
         const r=el.getBoundingClientRect();addPoint([(e.clientX-r.left-V.x)/V.k,(e.clientY-r.top-V.y)/V.k]);
+      }
+      if(d&&CLEAN.on&&moved<4&&e.type==="pointerup"){
+        const r=el.getBoundingClientRect();CLEAN.pts.push([(e.clientX-r.left-V.x)/V.k,(e.clientY-r.top-V.y)/V.k]);
+        if(CLEAN.pts.length===2)addCleanBox();else{renderTools();drawOverlays()}
       }
       if(d&&CAL.on&&moved<4&&e.type==="pointerup"&&CAL.pts.length<2){
         const r=el.getBoundingClientRect();CAL.pts.push([(e.clientX-r.left-V.x)/V.k,(e.clientY-r.top-V.y)/V.k]);renderScale();drawOverlays();
@@ -1351,7 +1407,12 @@ if(IS_POP){
 
 /* --- events --- */
 document.addEventListener("click",e=>{
-  const row=e.target.closest("tr.l");if(row){st.sel=+row.dataset.id;renderTable();renderDrawer();applyFocus();scheduleSync();return}
+  const row=e.target.closest("tr.l");if(row){
+    const id=+row.dataset.id,ln=LINES.find(x=>x.id===id);
+    if((e.metaKey||e.ctrlKey||e.shiftKey)&&ln&&ln.lk){          // tick several colour lines to combine them
+      const cur=curLine();if(!PICK.size&&cur&&cur.lk&&cur.id!==id)PICK.add(cur.id);
+      PICK.has(id)?PICK.delete(id):PICK.add(id);st.sel=id;renderTable();renderDrawer();applyFocus();renderTools();return}
+    PICK.clear();st.sel=id;renderTable();renderDrawer();applyFocus();scheduleSync();return}
   const g=e.target.closest("tr.g");if(g){const i=+g.dataset.g;st.shut.has(i)?st.shut.delete(i):st.shut.add(i);renderTable();return}
   const c=e.target.closest(".chip");if(c){st.filter=c.dataset.f;renderChips();renderTable();return}
   const t=e.target.closest("[data-sh]");if(t){st.sheet=+t.dataset.sh;V.flash=null;setPage(st.sheet);return}
@@ -1388,6 +1449,8 @@ $("#pdfBtn").onclick=async()=>{
   b.disabled=false;
 };
 document.addEventListener("keydown",e=>{
+  if(CLEAN.on&&e.key==="Escape"){cancelClean();return}
+  if(PICK.size&&e.key==="Escape"){PICK.clear();renderTable();renderTools();return}
   if(!TOOL.on&&SELS.el!=null&&(e.key==="Delete"||e.key==="Backspace")&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){e.preventDefault();deleteShape();return}
   if(!TOOL.on&&SELS.el!=null&&e.key==="Escape"){SELS.el=null;SELS.idx=null;renderTools();drawOverlays();return}
   if(TOOL.on&&!/INPUT|TEXTAREA/.test(document.activeElement.tagName)){

@@ -132,7 +132,7 @@ def merge_reconcile(lines_json, logic, ai):
             lines_json.append(ln)
 
 
-def apply_entries(proj, doc, ai_doc=None, labels=None):
+def apply_entries(proj, doc, ai_doc=None, labels=None, merges=None):
     """Build an uploaded project's lines from what logic read: legend rows (text or annotations) through the same rules
     as the samples, plus colour-measured groups. An AI reading is only a cross-check, unless logic found no legend at all."""
     labels = labels or {}
@@ -162,16 +162,28 @@ def apply_entries(proj, doc, ai_doc=None, labels=None):
     if ai_doc and ai_flat and not ai_primary and lines:
         ai_lines, _ = build_takeoff(ai_flat, profile)
         merge_reconcile(out, lines, ai_lines)
+    by_key = {f"{n}{m['key']}": (j, n, m) for j, (n, m) in enumerate(measures)}
+    # a combined line only applies while its parent and at least one other part still exist (a re-read can drop a colour group)
+    merges = {par: [k for k in mem if k in by_key] for par, mem in (merges or {}).items() if par in by_key}
+    merges = {par: mem for par, mem in merges.items() if len(mem) > 1}
+    absorbed = {k for par, mem in merges.items() for k in mem if k != par}                 # parts shown inside a combined line
     for j, (n, m) in enumerate(measures):
         key = f"{n}{m['key']}"
+        if key in absorbed:
+            continue
+        parts = [by_key[k][2] for k in merges[key]] if key in merges else []
+        combined = len(parts) > 1
         label = labels.get(key)
-        ds = label or f"{m['name']} markup, sheet {n} ({m['kind']})"
+        ds = label or (f"Combined {len(parts)} markups, sheet {n} ({m['kind']})" if combined else f"{m['name']} markup, sheet {n} ({m['kind']})")
+        qty = round(sum(x["quantity"] for x in parts), 3) if combined else m["quantity"]
         area = m["kind"] == "area"
-        t = TakeoffLine("MARKUPS TO IDENTIFY", (label or m["name"]).upper()[:24], ds, m["unit"],
-                        area=m["quantity"] if area else None, length=None if area else m["quantity"],
+        t = TakeoffLine("MARKUPS TO IDENTIFY", (label or ("COMBINED" if combined else m["name"])).upper()[:24], ds, m["unit"],
+                        area=qty if area else None, length=None if area else qty,
                         kind="markup_area" if area else "markup_len", element=1000 + j, calc="plan" if area else "len")
         lj = line_json(len(out) + 1, t, n, None, profile)
         lj.update(lk=key, hex=m["hex"])
+        if combined:
+            lj["mem"] = merges[key]
         out.append(lj)
         counts[n] = counts.get(n, 0) + 1
     p = copy.deepcopy(proj)
