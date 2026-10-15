@@ -81,6 +81,37 @@ def team_list():
     return sorted(d["email"] for _, d, _ in get_store().doc_list("team"))
 
 
+def _clean_name(name):
+    return re.sub(r"\s+", " ", str(name or "")).strip()[:60]
+
+
+def set_display_name(user, name):
+    """What people see instead of the sign-in (an email in hosted mode). Kept apart from the team list so a name never grants access."""
+    from core.store import get_store
+    user, name = (user or "").strip().lower(), _clean_name(name)
+    if not user:
+        raise ValueError("Not signed in.")
+    if "@" in name:
+        raise ValueError("Use a name, not an email address.")
+    if name:
+        get_store().doc_put("profile", _team_id(user), {"user": user, "name": name})
+    else:
+        get_store().doc_delete("profile", _team_id(user))
+    return name
+
+
+def display_names():
+    from core.store import get_store
+    return {d["user"]: d["name"] for _, d, _ in get_store().doc_list("profile") if d.get("user") and d.get("name")}
+
+
+def display_name(user, names=None):
+    """Chosen name, else the part of an email before the @ (never the full address), else the sign-in itself."""
+    user = user or ""
+    got = (names if names is not None else display_names()).get(user.strip().lower())
+    return got or (user.split("@")[0] if "@" in user else user)
+
+
 def _is_member(user_id, email):
     """On this app's team list, or a QuantiDawn website admin (public.admins). The project is shared with the
     website, so merely having a Supabase account is never enough."""

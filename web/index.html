@@ -424,6 +424,7 @@ body.pop .popnote{display:none}
     <div class="sp"></div>
     <button id="installBtn" title="Install the estimator as an app" aria-label="Install the estimator as an app" hidden><svg class="i" viewBox="0 0 16 16"><path d="M8 2v8m0 0L5 7m3 3l3-3M3 13h10"/></svg></button>
     <button id="helpBtn" title="How to use the estimator" aria-label="How to use the estimator"><svg class="i" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M6.200 6.300c0-1 .8-1.700 1.800-1.700s1.800.7 1.800 1.600c0 1.200-1.800 1.300-1.800 2.600M8 11.400v.1"/></svg></button>
+    <button id="nameBtn" title="Set the name your teammates see" aria-label="Set your display name" hidden><svg class="i" viewBox="0 0 16 16"><circle cx="8" cy="5.500" r="2.500"/><path d="M3 13.500c.500-2.600 2.600-4 5-4s4.500 1.400 5 4"/></svg></button>
     <button id="logoutBtn" title="Sign out" aria-label="Sign out" hidden><svg class="i" viewBox="0 0 16 16"><path d="M6 2.500H3.500v11H6M10 5l3 3-3 3M13 8H6"/></svg></button>
     <button id="themeBtn" title="Switch between light and dark" aria-label="Switch between light and dark"><svg class="i" id="themeIcon" viewBox="0 0 16 16"></svg></button>
   </nav>
@@ -609,6 +610,7 @@ body.pop .popnote{display:none}
     if(r.status===401&&same)location.href="/login?next="+encodeURIComponent(location.pathname+location.search);
     return r}})();
 const QD_USER=(document.querySelector('meta[name="qd-user"]')||{}).content||"";
+const QD_NAME=(document.querySelector('meta[name="qd-name"]')||{}).content||QD_USER;
 
 /* --- project data comes from the server (see server.py); nothing is hard-coded here --- */
 const QS=new URLSearchParams(location.search);
@@ -1282,7 +1284,9 @@ $("#shMake").onclick=async()=>{
   }catch(e){res.innerHTML=`<div class="hint" style="color:var(--accent)">${e.message}</div>`}
   b.disabled=false;b.textContent="Create link";
 };
-if(QD_USER&&QD_USER!=="local"){const lo=$("#logoutBtn");lo.hidden=false;lo.title="Sign out "+QD_USER;lo.onclick=async()=>{await fetch("/logout",{method:"POST"});location.href="/login"}}
+if(QD_USER&&QD_USER!=="local"){const lo=$("#logoutBtn");lo.hidden=false;lo.title="Sign out "+QD_NAME;
+  const nb=$("#nameBtn");nb.hidden=false;nb.onclick=async()=>{const v=prompt("Your name, as your teammates should see it:",QD_NAME===QD_USER?"":QD_NAME);if(v===null)return;
+    try{const r=await fetch("/api/me/name",{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":(document.querySelector('meta[name="csrf-token"]')||{}).content||""},body:JSON.stringify({name:v})});const j=await r.json();if(!r.ok){alert(j.error||"Could not save the name.");return}location.reload()}catch(e){alert("Could not save the name.")}};lo.onclick=async()=>{await fetch("/logout",{method:"POST"});location.href="/login"}}
 
 /* --- pop-out window: the same page with ?plan=1. Both windows edit one shared document over a BroadcastChannel,
        so you can measure in the pop-out and watch the table update in the main window (and the reverse). --- */
@@ -1478,7 +1482,7 @@ async function boot(){
     const scoped=mine?pr.filter(p=>p.owner===me):pr,nArch=scoped.filter(p=>p.archived).length,list=scoped.filter(p=>!!p.archived===arch);
     $("#recent").innerHTML=`<div class="ptoggle" role="group" aria-label="Which projects to list"><button data-pf="all" class="${mine?"":"on"}">All</button><button data-pf="mine" class="${mine?"on":""}">My projects</button></div>`
       +`<div class="ptoggle sub" role="group" aria-label="Active or archived"><button data-pa="0" class="${arch?"":"on"}">Active</button><button data-pa="1" class="${arch?"on":""}">Archived${nArch?" ("+nArch+")":""}</button></div>`
-      +(list.length?list.map(p=>`<div class="prow"><a href="?project=${encodeURIComponent(p.id)}" style="${p.id===PID?"font-weight:600":""}">${esc(p.name)} <span class="num">${esc(p.note)}${p.owner?" &middot; "+esc(p.owner):""}</span></a>${p.sample?"":`<button data-arch="${esc(p.id)}" data-to="${arch?0:1}" title="${arch?"Move back to the active list":"Move out of the active list. Nothing is deleted."}">${arch?"Restore":"Archive"}</button>`}</div>`).join(""):`<div class="pnone">${arch?"No archived projects.":"You haven't created a project yet."}</div>`);
+      +(list.length?list.map(p=>`<div class="prow"><a href="?project=${encodeURIComponent(p.id)}" style="${p.id===PID?"font-weight:600":""}">${esc(p.name)} <span class="num">${esc(p.note)}${p.owner?" &middot; "+esc(p.owner_name||p.owner):""}</span></a>${p.sample?"":`<button data-arch="${esc(p.id)}" data-to="${arch?0:1}" title="${arch?"Move back to the active list":"Move out of the active list. Nothing is deleted."}">${arch?"Restore":"Archive"}</button>`}</div>`).join(""):`<div class="pnone">${arch?"No archived projects.":"You haven't created a project yet."}</div>`);
     $$("#recent [data-pa]").forEach(b=>b.onclick=()=>{lsSet("qd-archived",b.dataset.pa);location.reload()});
     $$("#recent [data-arch]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{const r=await fetch(`/api/project/${encodeURIComponent(b.dataset.arch)}/archive`,{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":(document.querySelector('meta[name="csrf-token"]')||{}).content||""},body:JSON.stringify({archived:b.dataset.to==="1"})});if(!r.ok)throw 0;location.reload()}catch(e){b.disabled=false;b.textContent="Failed, retry"}});
     $$("#recent [data-pf]").forEach(b=>b.onclick=()=>{lsSet("qd-projects",b.dataset.pf);location.reload()})}catch(e){}

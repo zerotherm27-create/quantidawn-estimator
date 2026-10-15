@@ -115,7 +115,8 @@ def render_png(pdf, idx, zoom=2):
 def index():
     text = (WEB / "index.html").read_text()
     meta = (f'<meta name="csrf-token" content="{html.escape(session.get("csrf", ""), quote=True)}">'
-            f'<meta name="qd-user" content="{html.escape(g.user or "", quote=True)}">')
+            f'<meta name="qd-user" content="{html.escape(g.user or "", quote=True)}">'
+            f'<meta name="qd-name" content="{html.escape(auth.display_name(g.user) if g.user else "", quote=True)}">')
     return Response(text.replace("<!--SESSION-->", meta), mimetype="text/html")
 
 
@@ -194,8 +195,9 @@ def projects():
     for pid in SAMPLES:
         meta = json.load(open(ROOT / "samples" / SAMPLES[pid] / "meta.json"))
         out.append({"id": pid, "name": meta["name"], "sample": True, "note": "sample"})
+    names = auth.display_names()
     for _, p, _ts in get_store().doc_list("project"):
-        out.append({"id": p["id"], "name": p["name"], "sample": False, "note": f"{len(p['pages'])} sheets", "owner": p.get("owner", ""),
+        out.append({"id": p["id"], "name": p["name"], "sample": False, "note": f"{len(p['pages'])} sheets", "owner": p.get("owner", ""), "owner_name": auth.display_name(p.get("owner", ""), names),
                     "archived": bool(p.get("archived"))})
     return jsonify(out)
 
@@ -439,7 +441,7 @@ def put_state(pid):
     cur = get_store().doc_get("state", pid)
     if not force and base is not None and cur and abs(float(cur.get("saved", 0)) - float(base)) > 1e-6:
         # someone else saved since this browser loaded: refuse rather than silently replace their work
-        return jsonify(error="conflict", saved=cur.get("saved"), by=cur.get("by", "")), 409
+        return jsonify(error="conflict", saved=cur.get("saved"), by=auth.display_name(cur.get("by", ""))), 409
     data["saved"] = time.time()
     data["by"] = g.user or ""
     get_store().doc_put("state", pid, data)
@@ -892,8 +894,21 @@ def create_share(pid):
 @app.get("/api/project/<pid>/shares")
 def list_shares(pid):
     check_id(pid)
-    return jsonify([{k: m[k] for k in ("id", "file", "created", "expires", "count", "max", "state", "note", "by")}
+    names = auth.display_names()
+    return jsonify([{k: m[k] for k in ("id", "file", "created", "expires", "count", "max", "state", "note")} | {"by": auth.display_name(m["by"], names)}
                     for m in shares.list_for_project(pid)])
+
+
+@app.post("/api/me/name")
+def set_my_name():
+    """Choose the name shown to teammates instead of the sign-in."""
+    if not g.user or g.user == "local":                 # no sign-in (local use): there is nobody to name
+        abort(401)
+    try:
+        name = auth.set_display_name(g.user, (request.get_json(force=True, silent=True) or {}).get("name", ""))
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+    return jsonify(ok=True, name=name or auth.display_name(g.user))
 
 
 @app.delete("/api/share/<sid>")
