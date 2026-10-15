@@ -53,3 +53,28 @@ print("PASS hairlines, tiny dashes and empty space give nothing")
 sl = sorted(out["slope"])
 assert abs(sl[0][0] - 50) < 0.3 and abs(sl[1][0] - 250) < 0.3, out["slope"]
 print("PASS a sloping wall is traced along its slope")
+
+# straight lines: Shift locks the next point to the nearest 45 degrees from the last one
+import math
+fn2 = html.split("// ORTHO_START")[1].split("// ORTHO_END")[0]
+js2 = fn2 + """
+const a=[100,100];
+console.log(JSON.stringify({h:constrainStraight(a,[220,104]), v:constrainStraight(a,[103,30]), d:constrainStraight(a,[180,185]),
+  d2:constrainStraight(a,[30,170]), left:constrainStraight(a,[10,97]), same:constrainStraight(a,[100,100])}));
+"""
+o2 = json.loads(subprocess.run([node, "-e", js2], capture_output=True, text=True, check=True).stdout)
+assert all(abs(x - y) < 1e-6 for x, y in zip(o2["h"], (220, 100))), o2["h"]
+assert all(abs(x - y) < 1e-6 for x, y in zip(o2["v"], (100, 30))), o2["v"]
+assert abs(o2["d"][0] - 100 - (o2["d"][1] - 100)) < 1e-6 and o2["d"][0] > 100, o2["d"]                 # a 45 degree diagonal
+assert abs((o2["d2"][0] - 100) + (o2["d2"][1] - 100)) < 1e-6 and o2["d2"][0] < 100, o2["d2"]          # the other diagonal
+assert all(abs(x - y) < 1e-6 for x, y in zip(o2["left"], (10, 100))), o2["left"]
+assert o2["same"] == [100, 100]
+print("PASS Shift locks to horizontal, vertical and 45 degree lines, in every direction")
+
+# typed distance: a point exactly d along the way from the last point toward the cursor
+js3 = fn2 + """
+console.log(JSON.stringify({a:pointAlong([100,100],[400,100],50), b:pointAlong([100,100],[100,10],25), c:pointAlong([0,0],[3,4],10), none:pointAlong([5,5],[5,5],10)}));
+"""
+o3 = json.loads(subprocess.run([node, "-e", js3], capture_output=True, text=True, check=True).stdout)
+assert o3["a"] == [150, 100] and o3["b"] == [100, 75] and o3["c"] == [6, 8] and o3["none"] is None, o3
+print("PASS a typed distance lands exactly that far along the drawn direction")
