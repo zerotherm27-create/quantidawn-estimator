@@ -115,3 +115,21 @@ assert markup_pdf.colour_of("X", "red") == markup_pdf.colour_of("X") == markup_p
 sh = markup_pdf.clean_shapes([{"kind": "len", "page": 0, "pts": [[0, 0], [5, 5]], "label": "W", "color": "#112233"}])
 assert sh[0]["color"] == "#112233"
 print("PASS marked-up PDF takes the item's colour")
+
+# 6. wall and volume items: height or depth is required and sets the formula
+for body in ({"name": "Wall", "kind": "wall", "color": "#112233"}, {"name": "Wall", "kind": "wall", "color": "#112233", "size": 0},
+             {"name": "Wall", "kind": "wall", "color": "#112233", "size": "x"}, {"name": "Slab", "kind": "vol", "color": "#112233", "size": 1000}):
+    assert c.put(f"/api/project/{pid}/items", json={"add": body}).status_code == 400, body
+c.put(f"/api/project/{pid}/items", json={"add": {"name": "Brick wall", "kind": "wall", "color": "#aa5500", "size": 2.7}})
+c.put(f"/api/project/{pid}/items", json={"add": {"name": "Slab", "kind": "vol", "color": "#0055aa", "size": 0.1}})
+by = {l["ds"]: l for l in items()}
+w, v = by["Brick wall"], by["Slab"]
+assert (w["u"], w["mt"], w["calc"], w["n"]["H"], w["n"]["O"]) == ("m2", "len", "wall", 2.7, 0), w
+assert (v["u"], v["mt"], v["calc"], v["n"]["H"]) == ("m3", "area", "prism", 0.1), v
+print("PASS wall (length x height - openings, m2) and volume (area x depth, m3) items")
+
+# the numbers behind them: the same formulas the estimator's own lines use
+from core.calc import qty
+assert abs(qty("wall", {"L": 30, "H": 2.7, "O": 5.34, "R": None}) - (30 * 2.7 - 5.34)) < 1e-9
+assert abs(qty("prism", {"A": 80, "H": 0.1}) - 8.0) < 1e-9
+print("PASS 30 m x 2.7 m - 5.34 m2 openings = 75.66 m2; 80 m2 x 0.1 m = 8 m3")

@@ -493,7 +493,7 @@ def merge_markups(pid):
     return jsonify(ok=True)
 
 
-ITEM_KINDS = ("len", "area", "count")
+ITEM_KINDS = ("len", "area", "count", "wall", "vol")      # wall: length x height minus openings (m2); vol: area x depth (m3)
 CLEAN_PLAN_SEGS = 300       # a flattened marked-up sheet is a picture (no vector lines); an architect's clean plan has thousands
 
 
@@ -516,7 +516,16 @@ def takeoff_items(pid):
         kind, color = a.get("kind"), str(a.get("color", ""))
         if not name or kind not in ITEM_KINDS or not re.match(r"^#[0-9a-fA-F]{6}$", color) or len(items) >= 60:
             abort(400)
-        items.append({"id": max([i["id"] for i in items] + [0]) + 1, "name": name, "kind": kind, "color": color.lower()})
+        item = {"id": max([i["id"] for i in items] + [0]) + 1, "name": name, "kind": kind, "color": color.lower()}
+        if kind in ("wall", "vol"):                            # a wall needs its height, a volume its depth
+            try:
+                size = float(a.get("size"))
+            except (TypeError, ValueError):
+                abort(400)
+            if not (math.isfinite(size) and 0.005 <= size <= 100):
+                abort(400)
+            item["size"] = round(size, 3)
+        items.append(item)
     elif "recolor" in body:
         r = body["recolor"] if isinstance(body["recolor"], dict) else {}
         if not re.match(r"^#[0-9a-fA-F]{6}$", str(r.get("color", ""))):
