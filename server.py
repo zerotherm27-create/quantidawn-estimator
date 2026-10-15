@@ -195,8 +195,24 @@ def projects():
         meta = json.load(open(ROOT / "samples" / SAMPLES[pid] / "meta.json"))
         out.append({"id": pid, "name": meta["name"], "sample": True, "note": "sample"})
     for _, p, _ts in get_store().doc_list("project"):
-        out.append({"id": p["id"], "name": p["name"], "sample": False, "note": f"{len(p['pages'])} sheets", "owner": p.get("owner", "")})
+        out.append({"id": p["id"], "name": p["name"], "sample": False, "note": f"{len(p['pages'])} sheets", "owner": p.get("owner", ""),
+                    "archived": bool(p.get("archived"))})
     return jsonify(out)
+
+
+@app.post("/api/project/<pid>/archive")
+def archive_project(pid):
+    """Move a project out of the default list (or back). Nothing is deleted and it stays fully editable."""
+    check_id(pid)
+    if pid in SAMPLES:
+        abort(400, description="The sample projects cannot be archived.")
+    st = get_store()
+    p = st.doc_get("project", pid)
+    if p is None:
+        abort(404)
+    p["archived"] = bool((request.get_json(force=True, silent=True) or {}).get("archived", True))
+    st.doc_put("project", pid, p)
+    return jsonify(ok=True, archived=p["archived"])
 
 
 def build_project(pid, entries):

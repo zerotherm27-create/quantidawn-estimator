@@ -112,6 +112,9 @@ main{min-width:0;display:flex;flex-direction:column}
 .recent a{display:flex;justify-content:space-between;padding:10px 0;border-top:1px solid var(--line);color:var(--ink);text-decoration:none;font-size:13px;cursor:pointer;transition:padding .25s var(--ease)}
 .recent a:hover{padding-left:6px}
 .recent a span{color:var(--ink-3)}
+.recent .prow{display:flex;align-items:center;gap:10px;border-top:1px solid var(--line)}.recent .prow a{flex:1;border-top:0}
+.recent .prow button{font-size:12px;color:var(--ink-3);padding:4px 9px;border:1px solid var(--line);border-radius:8px;transition:color .2s,background .2s}.recent .prow button:hover{color:var(--ink);background:var(--line-2)}
+.ptoggle.sub{margin-top:-2px}
 .ptoggle{display:flex;gap:2px;margin:0 0 6px}
 .ptoggle button{padding:5px 10px;font-size:12px;color:var(--ink-3);border:1px solid var(--line);border-radius:8px;transition:color .2s,background .2s}
 .ptoggle button.on{color:var(--ink);background:var(--line-2)}
@@ -1468,9 +1471,13 @@ async function boot(){
   $("#demoBtn").textContent=DEMO_AI?"Hide demo AI check":"Demo AI check";
   if(DEMO_AI){const el=$("#saveLbl");if(el)el.textContent="Demo AI data, not saved"}
   try{const pr=await (await fetch("/api/projects")).json();
-    const me=QD_USER,mine=lsGet("qd-projects")==="mine"&&!!me,list=mine?pr.filter(p=>p.owner===me):pr;
+    const me=QD_USER,mine=lsGet("qd-projects")==="mine"&&!!me,arch=lsGet("qd-archived")==="1";
+    const scoped=mine?pr.filter(p=>p.owner===me):pr,nArch=scoped.filter(p=>p.archived).length,list=scoped.filter(p=>!!p.archived===arch);
     $("#recent").innerHTML=`<div class="ptoggle" role="group" aria-label="Which projects to list"><button data-pf="all" class="${mine?"":"on"}">All</button><button data-pf="mine" class="${mine?"on":""}">My projects</button></div>`
-      +(list.length?list.map(p=>`<a href="?project=${encodeURIComponent(p.id)}" style="${p.id===PID?"font-weight:600":""}">${esc(p.name)} <span class="num">${esc(p.note)}${p.owner?" &middot; "+esc(p.owner):""}</span></a>`).join(""):`<div class="pnone">You haven't created a project yet.</div>`);
+      +`<div class="ptoggle sub" role="group" aria-label="Active or archived"><button data-pa="0" class="${arch?"":"on"}">Active</button><button data-pa="1" class="${arch?"on":""}">Archived${nArch?" ("+nArch+")":""}</button></div>`
+      +(list.length?list.map(p=>`<div class="prow"><a href="?project=${encodeURIComponent(p.id)}" style="${p.id===PID?"font-weight:600":""}">${esc(p.name)} <span class="num">${esc(p.note)}${p.owner?" &middot; "+esc(p.owner):""}</span></a>${p.sample?"":`<button data-arch="${esc(p.id)}" data-to="${arch?0:1}" title="${arch?"Move back to the active list":"Move out of the active list. Nothing is deleted."}">${arch?"Restore":"Archive"}</button>`}</div>`).join(""):`<div class="pnone">${arch?"No archived projects.":"You haven't created a project yet."}</div>`);
+    $$("#recent [data-pa]").forEach(b=>b.onclick=()=>{lsSet("qd-archived",b.dataset.pa);location.reload()});
+    $$("#recent [data-arch]").forEach(b=>b.onclick=async()=>{b.disabled=true;try{const r=await fetch(`/api/project/${encodeURIComponent(b.dataset.arch)}/archive`,{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":(document.querySelector('meta[name="csrf-token"]')||{}).content||""},body:JSON.stringify({archived:b.dataset.to==="1"})});if(!r.ok)throw 0;location.reload()}catch(e){b.disabled=false;b.textContent="Failed, retry"}});
     $$("#recent [data-pf]").forEach(b=>b.onclick=()=>{lsSet("qd-projects",b.dataset.pf);location.reload()})}catch(e){}
   {const up=!!(PROJ.id&&!PROJ.sample);const rb=document.getElementById("readBtn"),ab=document.getElementById("aiBtn");if(rb)rb.hidden=!up;if(ab)ab.hidden=!(up&&LINES.length)}
   if(empty)go("upload");else if(!LINES.length)go("review");
