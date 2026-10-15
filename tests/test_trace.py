@@ -78,3 +78,34 @@ console.log(JSON.stringify({a:pointAlong([100,100],[400,100],50), b:pointAlong([
 o3 = json.loads(subprocess.run([node, "-e", js3], capture_output=True, text=True, check=True).stdout)
 assert o3["a"] == [150, 100] and o3["b"] == [100, 75] and o3["c"] == [6, 8] and o3["none"] is None, o3
 print("PASS a typed distance lands exactly that far along the drawn direction")
+
+# what Read markups says when no sheet gave anything: the real reason, not the first sheet's note
+fn4 = html.split("// READMSG_START")[1].split("// READMSG_END")[0]
+js4 = fn4 + """
+const clean="Sheet 5 is a clean vector drawing with no estimator markup, so there is no markup to read. Measure it yourself";
+const scale="Sheet 1: set its scale first (Enter scale), then press Read markups again.";
+const colour="No coloured markups were found on this sheet.";
+console.log(JSON.stringify({
+  mixed: summariseRead([scale,scale,scale,clean,clean,clean],16), one: summariseRead([clean],1),
+  scaleOnly: summariseRead([scale,scale],4), colourOnly: summariseRead([colour,colour],4), both: summariseRead([scale,colour],4), none: summariseRead([],4)}));
+"""
+o4 = json.loads(subprocess.run([node, "-e", js4], capture_output=True, text=True, check=True).stdout)
+assert "3 of 16 sheets are a clean drawing" in o4["mixed"] and "Auto-detect" in o4["mixed"] and "set its scale" not in o4["mixed"], o4["mixed"]
+assert "1 of 1 sheet is a clean drawing" in o4["one"], o4["one"]
+assert "scale is not set on 2 sheets" in o4["scaleOnly"], o4["scaleOnly"]
+assert "No estimator markup was found" in o4["colourOnly"] and "scale" not in o4["colourOnly"], o4["colourOnly"]
+assert "No estimator markup" in o4["both"] and "1 sheet has no scale" in o4["both"], o4["both"]
+assert o4["none"] == "Nothing could be read from these sheets."
+print("PASS Read markups explains clean plans (not the first sheet's scale note) and the other empty cases")
+
+# after a read: say what it produced
+js5 = fn4 + """
+console.log(JSON.stringify({ok:readOutcome({lines:5,skipped:2,found:9,measured:0,kind:"logic"}), one:readOutcome({lines:1,skipped:0,found:1,measured:0,kind:"ai"}),
+  quiet:readOutcome({lines:0,skipped:16,found:16,measured:0,kind:"logic"}), colour:readOutcome({lines:0,skipped:0,found:0,measured:3,kind:"logic"})}));
+"""
+o5 = json.loads(subprocess.run([node, "-e", js5], capture_output=True, text=True, check=True).stdout)
+assert o5["ok"]["kind"] == "info" and "added 5 takeoff lines" in o5["ok"]["msg"] and "2 rows" in o5["ok"]["msg"], o5["ok"]
+assert "added 1 takeoff line," not in o5["one"]["msg"] and o5["one"]["msg"].startswith("AI check added 1 takeoff line."), o5["one"]
+assert o5["quiet"]["kind"] == "warn" and "16 rows of text" in o5["quiet"]["msg"] and "none of it became a takeoff line" in o5["quiet"]["msg"] and "Auto-detect" in o5["quiet"]["msg"], o5["quiet"]
+assert "3 colour groups" in o5["colour"]["msg"], o5["colour"]
+print("PASS a read that adds nothing says so, and why; one that adds lines says how many and what was left out")
