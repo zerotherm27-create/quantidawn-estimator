@@ -122,14 +122,79 @@ def _colour_keys(img):
     return mask, key, hue
 
 
-def colour_group_mask(pdf, index, key, long_edge=2000):
+def _main_area(mask, cols=100, min_share=0.04, margin=0.03):
+    """Cells of the sheet that hold the real markup, as a pixel mask. Logos, stamps and legend swatches are small bits of colour
+    outside the drawing. The ink is gridded and nearby cells are joined into clusters. A cluster holding at least `min_share` of
+    the biggest cluster's ink is part of the drawing (so a second plan on the sheet counts). Any other cluster is kept only if
+    its centre lies inside the area the drawing clusters span (plus `margin` of the page), so a small marker inside a plan stays
+    and a logo in the title block does not."""
+    h, w = mask.shape
+    cell = max(1, w // cols)
+    gh, gw = -(-h // cell), -(-w // cell)
+    pad = np.zeros((gh * cell, gw * cell), bool)
+    pad[:h, :w] = mask
+    ink = pad.reshape(gh, cell, gw, cell).sum((1, 3))
+    active = ink >= max(3, cell * cell // 100)
+    near = active.copy()
+    for _ in range(2):                                           # bridge small gaps between parts of one drawing
+        near = near | np.roll(near, 1, 0) | np.roll(near, -1, 0) | np.roll(near, 1, 1) | np.roll(near, -1, 1)
+    label = np.zeros(near.shape, np.int32)
+    clusters = []                                                # (ink, cells)
+    for y0, x0 in zip(*np.nonzero(near)):
+        if label[y0, x0]:
+            continue
+        n = len(clusters) + 1
+        cells, stack = [], [(y0, x0)]
+        label[y0, x0] = n
+        while stack:
+            y, x = stack.pop()
+            cells.append((y, x))
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    yy, xx = y + dy, x + dx
+                    if 0 <= yy < gh and 0 <= xx < gw and near[yy, xx] and not label[yy, xx]:
+                        label[yy, xx] = n
+                        stack.append((yy, xx))
+        cs = np.array(cells)
+        clusters.append((int(ink[cs[:, 0], cs[:, 1]][active[cs[:, 0], cs[:, 1]]].sum()), cs))
+    if not clusters:
+        return np.zeros(mask.shape, bool)
+    top = max(c[0] for c in clusters)
+    main = [c for c in clusters if c[0] >= min_share * top]
+    ys = np.concatenate([c[1][:, 0] for c in main])
+    xs = np.concatenate([c[1][:, 1] for c in main])
+    my, mx = margin * gh, margin * gw
+    y0, y1, x0, x1 = ys.min() - my, ys.max() + my, xs.min() - mx, xs.max() + mx
+    keep = np.zeros(near.shape, bool)
+    for i, (n_ink, cs) in enumerate(clusters):
+        cy, cx = cs[:, 0].mean(), cs[:, 1].mean()
+        if n_ink >= min_share * top or (y0 <= cy <= y1 and x0 <= cx <= x1):
+            keep[cs[:, 0], cs[:, 1]] = True
+    return np.kron(keep, np.ones((cell, cell), bool))[:h, :w]
+
+
+def _ink(img, ignore=None):
+    """The coloured markup of a sheet: (mask, key, hue). Only the main drawing area counts (not the logo or title block),
+    and boxes a person drew to ignore ([x0, y0, x1, y1] as fractions of the page) are cleared."""
+    mask, key, hue = _colour_keys(img)
+    if mask.sum() >= 400:
+        mask = mask & _main_area(mask)
+    h, w = mask.shape
+    for b in ignore or []:
+        x0, y0, x1, y1 = b
+        mask[int(y0 * h):int(math.ceil(y1 * h)), int(x0 * w):int(math.ceil(x1 * w))] = False
+    return mask, key, hue
+
+
+def colour_group_mask(pdf, index, keys, long_edge=2000, ignore=None):
     """PNG (RGBA) that makes one measured colour group stand out: the rest of the sheet is veiled in translucent white and the
     group's own pixels are painted solid magenta, thickened so thin strokes are visible when zoomed out. Drawn over the plan when the
     group's line is selected, so nobody has to guess which colour a line is. The group is rebuilt with the same grouping
-    measure_colours uses; `key` is its 'c<number>' id."""
+    measure_colours uses; `keys` is one 'c<number>' id or a list of them (a combined line)."""
     img, _ = _render(pdf, index, long_edge)
-    mask, keys, _ = _colour_keys(img)
-    m = mask & (keys == int(key[1:]))
+    mask, kk, _ = _ink(img, ignore)
+    wanted = [int(k[1:]) for k in ([keys] if isinstance(keys, str) else keys)]
+    m = mask & np.isin(kk, wanted)
     if not m.any():
         return None
     for _ in range(4):
@@ -140,13 +205,13 @@ def colour_group_mask(pdf, index, key, long_edge=2000):
     return fitz.Pixmap(fitz.csRGB, m.shape[1], m.shape[0], rgba.tobytes(), True).tobytes("png")
 
 
-def measure_colours(pdf, index, ratio, long_edge=2000):
+def measure_colours(pdf, index, ratio, long_edge=2000, ignore=None):
     """Measure saturated colour groups on a raster page. Returns (groups, note).
     A group: {key, name, hex, kind: area|length, quantity (m2 or m), unit}."""
     if not ratio:
         return [], "The scale of this sheet is not known yet, so colours cannot be measured."
     img, z = _render(pdf, index, long_edge)
-    mask, key, hue = _colour_keys(img)
+    mask, key, hue = _ink(img, ignore)
     if mask.sum() < 400:
         return [], "No coloured markups were found on this sheet."
     out = []

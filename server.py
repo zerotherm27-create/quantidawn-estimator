@@ -2,6 +2,7 @@
 
     ./.venv/bin/python server.py        then open http://127.0.0.1:5050
 """
+import hashlib
 import hmac
 import math
 import html
@@ -84,7 +85,7 @@ def load_project(pid):
         abort(404)
     st = get_store()
     ed, ai, lb = st.doc_get("entries", pid), st.doc_get("ai", pid), st.doc_get("labels", pid)
-    return apply_entries(p, ed or {}, ai, lb) if (ed or ai) else p
+    return apply_entries(p, ed or {}, ai, lb, st.doc_get("merges", pid)) if (ed or ai) else p
 
 
 def blob_response(key, max_age=3600):
@@ -333,11 +334,13 @@ def read_markups(pid):
             ratio = (p["pages"][n - 1].get("scale") or {}).get("ratio")
         if ratio is not None and not (math.isfinite(ratio) and 1 <= ratio <= 10000):
             ratio = None
-        measures, note = logic_reader.measure_colours(pdf, idx, ratio)
+        measures, note = logic_reader.measure_colours(pdf, idx, ratio, ignore=_ignore_boxes(pid, n))
         if not ratio:
             note = f"Sheet {n}: set its scale first (Enter scale), then press Read markups again."
     st = get_store()
     doc = st.doc_get("entries", pid) or {"pages": {}}
+    if note.startswith(f"Sheet {n}: set its scale") and (doc["pages"].get(str(n)) or {}).get("measures"):
+        return jsonify(page=n, source="colour", found=0, measured=0, note=note)        # no scale to measure with: keep what was read
     doc["pages"][str(n)] = {"source": emb["source"] or ("colour" if measures else ""), "entries": emb["entries"],
                             "measures": measures, "note": note, "read": int(time.time())}
     st.doc_put("entries", pid, doc)
@@ -406,24 +409,90 @@ def name_markup(pid):
     return jsonify(ok=True)
 
 
+def _ignore_boxes(pid, n):
+    """Boxes a person drew on sheet n to leave out of colour reading, as [x0, y0, x1, y1] fractions of the page."""
+    return (get_store().doc_get("ignore", pid) or {}).get(str(n)) or []
+
+
 @app.get("/api/project/<pid>/markup-mask/<int:n>/<key>.png")
 def markup_mask(pid, n, key):
-    """Where a colour-measured group is on its sheet: a transparent PNG with only that group's pixels painted, drawn over the plan
-    when its line is selected, so nobody has to guess which colour a line is."""
+    """Where a colour-measured line is on its sheet: a PNG that fades the sheet and paints that line's pixels, drawn over the plan
+    when the line is selected, so nobody has to guess which colour a line is. `key` is one group ('c1023') or several joined
+    with '-' (a combined line)."""
     check_id(pid)
-    if not re.match(r"^c\d{1,6}$", key):
+    if not re.match(r"^c\d{1,6}(-c\d{1,6}){0,39}$", key):
         abort(400)
+    boxes = _ignore_boxes(pid, n)
     pdf, idx = page_source(pid, n)
-    png = logic_reader.colour_group_mask(pdf, idx, key)
+    png = logic_reader.colour_group_mask(pdf, idx, key.split("-"), ignore=boxes)
     if png is None:
         abort(404)
-    return Response(png, mimetype="image/png", headers={"Cache-Control": "private, max-age=3600"})
+    resp = Response(png, mimetype="image/png", headers={"Cache-Control": "private, no-cache"})
+    resp.set_etag(hashlib.sha1(f"{key}|{boxes}".encode()).hexdigest())       # changes when a clean-up box is drawn
+    return resp.make_conditional(request)
+
+
+@app.put("/api/project/<pid>/ignore")
+def ignore_area(pid):
+    """Draw a clean-up box on a sheet ({page, box: [x0, y0, x1, y1]} as fractions of the page) or clear that sheet's boxes
+    ({page, clear: true}). Colour reading and the highlight leave these areas out. Read the sheet again afterwards."""
+    p, n = _uploaded(pid)
+    body = request.get_json(force=True, silent=True) or {}
+    st = get_store()
+    doc = st.doc_get("ignore", pid) or {}
+    if body.get("clear"):
+        doc.pop(str(n), None)
+    else:
+        try:
+            x0, y0, x1, y1 = (float(v) for v in body.get("box"))
+        except (TypeError, ValueError):
+            abort(400)
+        if not all(math.isfinite(v) and 0 <= v <= 1 for v in (x0, y0, x1, y1)):
+            abort(400)
+        x0, x1, y0, y1 = min(x0, x1), max(x0, x1), min(y0, y1), max(y0, y1)
+        if x1 - x0 < 0.002 or y1 - y0 < 0.002:
+            abort(400)
+        boxes = doc.get(str(n), [])
+        if len(boxes) >= 20:
+            abort(400)
+        doc[str(n)] = boxes + [[round(x0, 4), round(y0, 4), round(x1, 4), round(y1, 4)]]
+    st.doc_put("ignore", pid, doc)
+    return jsonify(ok=True, boxes=doc.get(str(n), []))
+
+
+@app.put("/api/project/<pid>/merge")
+def merge_markups(pid):
+    """Combine colour-measured lines into one ({keys: ['1c1023', '1c1024']}: same sheet, same unit) or split a combined line
+    back into its parts ({split: '1c1023'}). The combined line adds the quantities and highlights all its colours."""
+    check_id(pid)
+    body = request.get_json(force=True, silent=True) or {}
+    st = get_store()
+    merges = st.doc_get("merges", pid) or {}
+    if body.get("split"):
+        merges.pop(str(body["split"]), None)
+    else:
+        keys = body.get("keys")
+        if not isinstance(keys, list) or not 2 <= len(keys) <= 40 or not all(isinstance(k, str) and re.match(r"^\d{1,3}c\d{1,6}$", k) for k in keys):
+            abort(400)
+        keys = set(keys)
+        if len({k.split("c")[0] for k in keys}) != 1:
+            abort(400)
+        have = {f"{n}{m['key']}": m for n, pg in ((st.doc_get("entries", pid) or {}).get("pages") or {}).items() for m in pg.get("measures", [])}
+        if not keys <= set(have) or len({have[k]["unit"] for k in keys}) != 1:
+            return jsonify(error="Only colour lines on the same sheet with the same unit (all m, or all m2) can be combined."), 400
+        for parent, members in list(merges.items()):        # joining a combined line with others takes in its parts
+            if parent in keys or set(members) & keys:
+                keys |= set(members)
+                del merges[parent]
+        merges[max(keys, key=lambda k: have[k]["quantity"])] = sorted(keys)
+    st.doc_put("merges", pid, merges)
+    return jsonify(ok=True)
 
 
 @app.delete("/api/project/<pid>/read")
 def clear_markups(pid):
     check_id(pid)
-    for coll in ("entries", "ai", "labels"):
+    for coll in ("entries", "ai", "labels", "merges"):
         get_store().doc_delete(coll, pid)
     return jsonify(ok=True)
 
@@ -434,6 +503,7 @@ def project(pid):
     if request.args.get("demo_ai") and p["lines"]:
         p = demo_ai(p)
     p["state"] = None if request.args.get("demo_ai") else get_store().doc_get("state", pid)
+    p["ignore"] = {} if p.get("sample") else (get_store().doc_get("ignore", pid) or {})   # clean-up boxes drawn on each sheet
     dups = find_duplicates(p["lines"])                   # look-alike lines are only flagged for a person; nothing is removed
     for l in p["lines"]:
         if l["id"] in dups:
