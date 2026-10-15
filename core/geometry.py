@@ -138,7 +138,8 @@ def _simplify(pts, tol):
             return p
         d = p[-1] - p[0]
         n = np.hypot(*d)
-        dist = np.abs(np.cross(d, p[1:-1] - p[0])) / n if n else np.hypot(*(p[1:-1] - p[0]).T)
+        v = p[1:-1] - p[0]
+        dist = np.abs(d[0] * v[:, 1] - d[1] * v[:, 0]) / n if n else np.hypot(v[:, 0], v[:, 1])      # a 2D cross product by hand: np.cross on 2D vectors is gone in NumPy 2.x
         i = int(np.argmax(dist))
         if dist[i] > tol:
             return np.vstack([dp(p[:i + 2])[:-1], dp(p[i + 1:])])
