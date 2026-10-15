@@ -459,7 +459,7 @@ body.pop .popnote{display:none}
         <button class="on" data-go="review">Review</button>
       </div>
       <button class="btn" id="demoBtn" title="Show planted AI disagreements so the cross-check can be seen">Demo AI check</button>
-      <button class="btn" id="resetBtn" title="Clear saved measurements">Reset</button>
+      <button class="btn" id="resetBtn" title="Clear saved measurements and everything read from the markups">Reset</button>
       <button class="btn" id="readBtn" title="Read the markups with the app's own logic: embedded legend text and annotations, then colour measuring" hidden>Read markups</button>
       <button class="btn" id="aiBtn" title="Ask the AI to read the legend as a second opinion" hidden>AI check</button>
       <button class="btn" id="shareBtn" title="Create a private download link for the client">Share link</button>
@@ -1619,7 +1619,13 @@ function applyState(d,live){
   if(Number.isInteger(d.page)&&SHEETS[d.page])V.page=d.page;
   const el=$("#saveLbl");if(el)el.textContent="Restored "+stamp(d.saved*1000);
 }
-$("#resetBtn").onclick=async()=>{if(confirm("Clear all saved measurements, scale confirmations and edits for this project?")){try{await fetch(`/api/project/${PID}/state`,{method:"DELETE"})}catch(e){}location.href="?project="+PID}};
+$("#resetBtn").onclick=async()=>{
+  if(!confirm("Reset this project? This clears your saved measurements, scale confirmations and edits, and everything read from the markups (colour lines, names, combined lines and clean-up areas). Your takeoff items stay, and the uploaded plans are not touched."))return;
+  try{
+    const a=await fetch(`/api/project/${PID}/state`,{method:"DELETE"}),b=await fetch(`/api/project/${PID}/read?all=1`,{method:"DELETE"});
+    if(!a.ok||!b.ok)throw 0}
+  catch(e){alert("Could not reset everything. Try again.");return}
+  location.href="?project="+PID};
 $("#demoBtn").onclick=()=>{location.href="?project="+PID+(DEMO_AI?"":"&demo_ai=1")};
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
 function lsSet(k,v){try{localStorage.setItem(k,v)}catch(e){}}

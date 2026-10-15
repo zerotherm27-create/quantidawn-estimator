@@ -108,3 +108,14 @@ before = len(hues(pid))
 r = c.post(f"/api/project/{pid}/read", json={"page": 1}).json
 assert "set its scale" in r["note"] and len(hues(pid)) == before > 0, (r, hues(pid))
 print("PASS no scale: existing colour lines are kept")
+
+# 7. Reset (DELETE read?all=1) clears what was read, the combinations, names and clean-up boxes; a plain DELETE keeps the boxes
+c.post(f"/api/project/{pid}/read", json={"page": 1, "ratio": 100})
+c.put(f"/api/project/{pid}/ignore", json={"page": 1, "box": [0.10, 0.54, 0.60, 0.60]})
+c.delete(f"/api/project/{pid}/read")
+assert c.get(f"/api/project/{pid}").json["ignore"].get("1"), "a fresh Read keeps clean-up boxes"
+c.post(f"/api/project/{pid}/read", json={"page": 1, "ratio": 100})
+c.delete(f"/api/project/{pid}/read?all=1")
+j = c.get(f"/api/project/{pid}").json
+assert not [l for l in j["lines"] if l.get("lk")] and not j["ignore"], j["ignore"]
+print("PASS Reset clears the read markups and clean-up boxes")
