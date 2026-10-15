@@ -400,7 +400,7 @@ body.pop .popnote{display:none}
 
 /* ---------- first-use tour: explains the real buttons, reopened with the ? button ---------- */
 #tour{position:fixed;inset:0;z-index:1000;display:none}#tour.on{display:block}
-#tour .spot{position:fixed;border-radius:10px;box-shadow:0 0 0 9999px rgba(10,10,12,.58);outline:2px solid var(--accent);outline-offset:2px;transition:all .28s var(--ease);pointer-events:none}
+#tour .spot{display:none;position:fixed;border-radius:10px;box-shadow:0 0 0 9999px rgba(10,10,12,.58);outline:2px solid var(--accent);outline-offset:2px;transition:all .28s var(--ease);pointer-events:none}
 #tour .tip{position:fixed;width:min(330px,calc(100vw - 24px));background:var(--surface);color:var(--ink);border:1px solid var(--line);border-radius:14px;padding:16px 18px 14px;box-shadow:0 18px 44px -14px rgba(0,0,0,.4);font-family:var(--font);transition:top .28s var(--ease),left .28s var(--ease)}
 #tour .tk{font:500 11px var(--mono);color:var(--accent);letter-spacing:.04em;text-transform:uppercase}
 #tour h3{font-size:16px;letter-spacing:-.01em;margin:4px 0 6px}#tour p{font-size:13.5px;line-height:1.5;color:var(--ink-2);margin:0}
@@ -1498,9 +1498,10 @@ if(IS_POP){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on'
   const spot=root.querySelector(".spot"),tip=root.querySelector(".tip"),q=s=>tip.querySelector(s);
   let list=[],i=0;
   const vis=e=>e&&e.getClientRects().length>0;
+  const nav=v=>{try{if(typeof go==="function")go(v)}catch(e){}};          // a screen that fails to draw must not strand the tour half-open
   const seen=()=>{try{localStorage.setItem("qd-guide-seen","1")}catch(e){}};
   function show(){
-    const st=list[i];if(st.view&&typeof go==="function")go(st.view);
+    const st=list[i];if(st.view)nav(st.view);
     const el=st.sel?document.querySelector(st.sel):null,has=vis(el);
     q(".tk").textContent=`${i+1} of ${list.length}`;q("h3").textContent=st.t;q("p").textContent=st.b;
     q("[data-tback]").style.visibility=i?"visible":"hidden";q("[data-tnext]").textContent=i===list.length-1?"Done":"Next";
@@ -1514,12 +1515,13 @@ if(IS_POP){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on'
     }else{spot.style.display="none";tip.style.left=(W-tw)/2+"px";tip.style.top=(H-th)/2+"px"}
   }
   function start(){
-    list=STEPS.filter(s=>true);i=0;root.classList.add("on");
+    if(!PROJ)return;                                                     // project still loading: nothing to point at yet
     // keep steps whose button exists on its screen; welcome and the final ? step always stay
-    const keep=[];for(const s of STEPS){if(!s.sel){keep.push(s);continue}if(s.view&&typeof go==="function")go(s.view);if(vis(document.querySelector(s.sel)))keep.push(s)}
-    list=keep;i=0;show();
+    const keep=[];for(const s of STEPS){if(!s.sel){keep.push(s);continue}if(s.view)nav(s.view);if(vis(document.querySelector(s.sel)))keep.push(s)}
+    list=keep;i=0;
+    try{root.classList.add("on");show()}catch(e){root.classList.remove("on")}
   }
-  function end(){seen();root.classList.remove("on");if(typeof go==="function")go(PROJ&&PROJ.id?"review":"upload")}
+  function end(){seen();root.classList.remove("on");nav(PROJ&&PROJ.id?"review":"upload")}
   tip.querySelector("[data-tnext]").onclick=()=>{if(i===list.length-1)end();else{i++;show()}};
   tip.querySelector("[data-tback]").onclick=()=>{if(i){i--;show()}};
   tip.querySelector(".tskip").onclick=end;
@@ -1527,7 +1529,7 @@ if(IS_POP){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on'
   addEventListener("resize",()=>{if(root.classList.contains("on"))show()});
   const hb=document.getElementById("helpBtn");if(hb)hb.onclick=start;
   window.qdTour=start;
-  if(!IS_POP){let done=false;try{done=localStorage.getItem("qd-guide-seen")==="1"}catch(e){}if(!done)setTimeout(start,900)}
+  if(!IS_POP){let done=false;try{done=localStorage.getItem("qd-guide-seen")==="1"}catch(e){}if(!done)setTimeout(()=>Promise.resolve(window.qdBooted).then(start),900)}
 })();
 
 /* --- installable app (PWA): the browser offers install; this button appears when it can --- */
@@ -1580,7 +1582,7 @@ document.addEventListener("dblclick",async e=>{
   const r=await fetch(`/api/project/${PID}/label`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:td.dataset.lk,label:name.trim()})});
   if(r.ok)location.reload();
 });
-boot();
+window.qdBooted=boot();
 </script>
 </body>
 </html>
