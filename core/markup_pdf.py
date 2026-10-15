@@ -1,4 +1,5 @@
 """Draw the shapes a person measured in the app onto copies of the original sheets, so the work can leave as a marked-up PDF."""
+import re
 import zlib
 
 import fitz
@@ -7,7 +8,10 @@ PALETTE = [(0.85, 0.33, 0.12), (0.10, 0.45, 0.80), (0.15, 0.60, 0.30), (0.60, 0.
 MAX_SHAPES, MAX_POINTS = 5000, 2000
 
 
-def colour_of(label):
+def colour_of(label, hex_colour=None):
+    """A takeoff item's own colour when it has one (so the PDF matches the screen), else a stable pick from the label."""
+    if hex_colour and re.match(r"^#[0-9a-fA-F]{6}$", hex_colour):
+        return tuple(int(hex_colour[i:i + 2], 16) / 255 for i in (1, 3, 5))
     return PALETTE[zlib.crc32(label.encode()) % len(PALETTE)]
 
 
@@ -22,7 +26,8 @@ def clean_shapes(raw):
             continue
         if kind not in ("count", "len", "area") or page < 0 or len(pts) < (1 if kind == "count" else 2):
             continue
-        out.append({"kind": kind, "page": page, "pts": pts, "label": str(s.get("label", ""))[:40], "text": str(s.get("text", ""))[:40]})
+        out.append({"kind": kind, "page": page, "pts": pts, "label": str(s.get("label", ""))[:40], "text": str(s.get("text", ""))[:40],
+                    "color": str(s.get("color", ""))[:7]})
     return out
 
 
@@ -50,7 +55,7 @@ def _draw(page, s):
     m = page.derotation_matrix                       # shapes are stored in the unrotated page's coordinates
     pts_v = [fitz.Point(x, y) for x, y in s["pts"]]
     pts = [p * m for p in pts_v]
-    col = colour_of(s["label"])
+    col = colour_of(s["label"], s.get("color"))
     sh = page.new_shape()
     if s["kind"] == "count":
         sh.draw_circle(pts[0], 5)

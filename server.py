@@ -24,7 +24,7 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 
 from core import auth, shares
-from core import logic_reader, markup_pdf, reader
+from core import geometry, logic_reader, markup_pdf, reader
 from core.dupes import find_duplicates
 from core.price_matcher import load_price_list, price_lines
 from core.project import DATA, ROOT, SAMPLES, _scale_json, apply_entries, demo_ai, from_json, native_z, render_pages, sample_project
@@ -85,7 +85,8 @@ def load_project(pid):
         abort(404)
     st = get_store()
     ed, ai, lb = st.doc_get("entries", pid), st.doc_get("ai", pid), st.doc_get("labels", pid)
-    return apply_entries(p, ed or {}, ai, lb, st.doc_get("merges", pid)) if (ed or ai) else p
+    items = st.doc_get("items", pid) or []
+    return apply_entries(p, ed or {}, ai, lb, st.doc_get("merges", pid), items) if (ed or ai or items) else p
 
 
 def blob_response(key, max_age=3600):
@@ -327,7 +328,10 @@ def read_markups(pid):
     pdf, idx = page_source(pid, n)
     emb = logic_reader.read_embedded(pdf, idx)
     measures, note = [], ""
-    if not emb["entries"]:                                  # flattened page: measure the coloured markups from the sheet's scale
+    if not emb["entries"] and len(geometry.page_segments(pdf, idx)[2]) >= CLEAN_PLAN_SEGS:
+        note = (f"Sheet {n} is a clean vector drawing with no estimator markup, so there is no markup to read. "
+                "Measure it yourself: add a takeoff item (+ New item), then click along the walls. They snap to the drawing.")
+    elif not emb["entries"]:                                # flattened page: measure the coloured markups from the sheet's scale
         try:
             ratio = float((request.get_json(force=True, silent=True) or {}).get("ratio"))        # the scale as set on screen
         except (TypeError, ValueError):
@@ -487,6 +491,91 @@ def merge_markups(pid):
         merges[max(keys, key=lambda k: have[k]["quantity"])] = sorted(keys)
     st.doc_put("merges", pid, merges)
     return jsonify(ok=True)
+
+
+ITEM_KINDS = ("len", "area", "count")
+CLEAN_PLAN_SEGS = 300       # a flattened marked-up sheet is a picture (no vector lines); an architect's clean plan has thousands
+
+
+@app.put("/api/project/<pid>/items")
+def takeoff_items(pid):
+    """Takeoff items a person makes, the way Bluebeam or PlanSwift have them: a name, what is measured (length, area or count)
+    and a colour. {add: {name, kind, color}}, {recolor: {id, color}} or {delete: id}. Each item is a line in the takeoff table,
+    and what is measured for it is drawn on the plan in its colour."""
+    check_id(pid)
+    if pid in SAMPLES:
+        abort(400, description="The sample projects already have their lines.")
+    if get_store().doc_get("project", pid) is None:
+        abort(404)
+    body = request.get_json(force=True, silent=True) or {}
+    st = get_store()
+    items = st.doc_get("items", pid) or []
+    if "add" in body:
+        a = body["add"] if isinstance(body["add"], dict) else {}
+        name = clean_label(a.get("name"), 40) if str(a.get("name") or "").strip() else ""        # clean_label turns an empty name into "plan"
+        kind, color = a.get("kind"), str(a.get("color", ""))
+        if not name or kind not in ITEM_KINDS or not re.match(r"^#[0-9a-fA-F]{6}$", color) or len(items) >= 60:
+            abort(400)
+        items.append({"id": max([i["id"] for i in items] + [0]) + 1, "name": name, "kind": kind, "color": color.lower()})
+    elif "recolor" in body:
+        r = body["recolor"] if isinstance(body["recolor"], dict) else {}
+        if not re.match(r"^#[0-9a-fA-F]{6}$", str(r.get("color", ""))):
+            abort(400)
+        for i in items:
+            if i["id"] == r.get("id"):
+                i["color"] = r["color"].lower()
+    elif "delete" in body:
+        items = [i for i in items if i["id"] != body["delete"]]
+    else:
+        abort(400)
+    st.doc_put("items", pid, items)
+    return jsonify(ok=True, items=items)
+
+
+def _page_scale(pid, n, pdf_w):
+    """Factor from PDF points to the page size the app draws in (the page image's size, rounded)."""
+    p = load_project(pid)
+    if not 1 <= n <= len(p["pages"]):
+        abort(404)
+    return p["pages"][n - 1]["w"] / pdf_w
+
+
+@app.get("/api/project/<pid>/geometry/<int:n>")
+def page_geometry(pid, n):
+    """The line work of a vector sheet, for snapping: {w, h, segs: [[x0, y0, x1, y1, weight], ...]} in the app's page space.
+    A scan or a flattened markup has none, and comes back with no segments."""
+    check_id(pid)
+    pdf, idx = page_source(pid, n)
+    w, h, segs = geometry.page_segments(pdf, idx)
+    k = _page_scale(pid, n, w)
+    if abs(k - 1) > 1e-3:
+        segs = [[round(a * k, 1), round(b * k, 1), round(c * k, 1), round(d * k, 1), e] for a, b, c, d, e in segs]
+    resp = jsonify(w=round(w * k, 1), h=round(h * k, 1), segs=segs)
+    resp.headers["Cache-Control"] = "private, max-age=600"
+    return resp
+
+
+@app.post("/api/project/<pid>/room")
+def room_outline(pid):
+    """Click inside a room: its outline, as a shape to drag-adjust. {page, x, y} in the app's page space."""
+    check_id(pid)
+    body = request.get_json(force=True, silent=True) or {}
+    try:
+        n, x, y = int(body.get("page")), float(body.get("x")), float(body.get("y"))
+    except (TypeError, ValueError):
+        abort(400)
+    if not (math.isfinite(x) and math.isfinite(y)):
+        abort(400)
+    pdf, idx = page_source(pid, n)
+    doc = fitz.open(pdf)
+    try:
+        k = _page_scale(pid, n, doc[idx].rect.width)
+    finally:
+        doc.close()
+    pts = geometry.room_polygon(pdf, idx, x / k, y / k)
+    if not pts or len(pts) < 3:
+        return jsonify(error="That spot is not inside a closed room. Click inside a room whose walls are closed (door openings are fine), or draw the area by hand."), 422
+    return jsonify(pts=[[round(a * k, 1), round(b * k, 1)] for a, b in pts])
 
 
 @app.delete("/api/project/<pid>/read")

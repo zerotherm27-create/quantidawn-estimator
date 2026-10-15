@@ -193,6 +193,17 @@ tr.l{cursor:pointer;transition:background .15s;animation:rise .45s var(--ease) b
 tr.l:hover td{background:var(--line-2)}
 tr.l.sel td{background:var(--accent-soft)}
 tr.l.sel td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
+.itemleg{position:absolute;right:14px;top:14px;z-index:2;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:500 11.5px var(--mono);color:var(--ink-2);pointer-events:none;max-width:260px;box-shadow:0 1px 2px rgba(24,24,27,.06)}
+.itemleg div{display:flex;gap:7px;align-items:center;padding:2px 0;white-space:nowrap}.itemleg i{width:10px;height:10px;border-radius:3px;flex:none}.itemleg b{margin-left:auto;padding-left:12px;color:var(--ink);font-weight:500}
+.idlg{position:fixed;inset:0;background:rgba(24,24,27,.38);z-index:60;display:flex;align-items:center;justify-content:center}
+.idlg .box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;width:min(420px,calc(100vw - 32px));box-shadow:0 12px 40px rgba(24,24,27,.22)}
+.idlg h3{margin:0 0 12px;font-size:16px}.idlg label{display:block;font-size:12px;color:var(--ink-3);margin:10px 0 4px}
+.idlg input[type=text]{width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink);font:inherit}
+.idlg .seg{display:flex;gap:6px}.idlg .seg button{flex:1;padding:8px 6px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink-2);cursor:pointer;font:inherit;font-size:12.5px}
+.idlg .seg button.on{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
+.idlg .act{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.sw{display:inline-block;width:20px;height:20px;border-radius:6px;margin:2px 4px 2px 0;cursor:pointer;border:2px solid transparent;vertical-align:middle}.sw.on{border-color:var(--ink)}
+.itact{margin-top:8px}
 tr.l.pick td{background:var(--accent-soft)}
 tr.l.pick td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 td.mk{font:500 12px var(--mono);width:78px;max-width:112px;overflow:hidden;text-overflow:ellipsis}
@@ -621,7 +632,7 @@ let PID=QS.get("project")||"boxshall";
 const DEMO_AI=QS.has("demo_ai");
 let PROJ=null,GROUPS=[],LINES=[],SKIPPED=[],SHEETS=[],SCALES=[];
 const AG_PRI={disputed:0,ai_only:1,unconfirmed:2,unrun:3,agreed:3,resolved:3};
-const MEAS={}, TOOL={on:false,pts:[]}, SELS={el:null,idx:null}, PICK=new Set(), CLEAN={on:false,pts:[]};   // PICK: colour lines ticked to combine; CLEAN: drawing a clean-up box   // MEAS is keyed by element: one drawn shape feeds every line of that element
+const MEAS={}, TOOL={on:false,pts:[],room:false}, GEO={}, SNAP={on:true}, SELS={el:null,idx:null}, PICK=new Set(), CLEAN={on:false,pts:[]};   // PICK: colour lines ticked to combine; CLEAN: drawing a clean-up box   // MEAS is keyed by element: one drawn shape feeds every line of that element
 let DRAG=null;
 const MT_NAME={len:"length",area:"area",count:"count"};
 const base=n=>n.A!=null?n.A:(n.L||0)*(n.W||0)*(n.N==null?1:n.N);
@@ -669,9 +680,98 @@ function liveText(){
   const m=mPerPt(),p=TOOL.pts;
   const v=l.mt==="len"?lenPt(p)*m:l.mt==="area"?(p.length>2?areaPt(p)*m*m:0):p.length;
   const u=l.mt==="len"?"m":l.mt==="area"?"m2":"";
+  if(TOOL.room)return `Measuring <b>${l.mk}</b>: click inside a room to take its outline.<br>Door openings are fine. Drag its corners afterwards to adjust. Esc cancels`;
   const how=l.mt==="count"?"Click each item":l.mt==="len"?"Click along the run, double-click to finish":"Click corners, double-click to close";
   return `Measuring <b>${l.mk}</b> by ${MT_NAME[l.mt]}: <b>${l.mt==="count"?v:v.toFixed(2)} ${u}</b><br>${how}. Esc cancels, Backspace undoes`;
 }
+/* --- takeoff items: a name, what is measured and a colour, like Bluebeam or PlanSwift --- */
+const ITEM_COLORS=["#e4572e","#17bebb","#7b2cbf","#f3a712","#2e86ab","#a8c256","#d1495b","#00798c","#8d5a97","#6c757d"];
+const lineHex=el=>{const l=LINES.find(x=>x.el===+el);return l&&l.hex||null};
+async function itemRequest(body){
+  const r=await fetch(`/api/project/${PID}/items`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
+  let j={};try{j=await r.json()}catch(e){}
+  if(!r.ok)throw new Error(j.error||"Could not save that item");
+  return j}
+function newItemDialog(){
+  if(document.querySelector(".idlg"))return;
+  const used=new Set(LINES.filter(l=>l.it).map(l=>l.hex)),first=ITEM_COLORS.find(c=>!used.has(c))||ITEM_COLORS[0];
+  let kind="len",color=first;
+  const d=document.createElement("div");d.className="idlg";
+  const paint=()=>{
+    d.querySelectorAll("[data-k]").forEach(b=>b.classList.toggle("on",b.dataset.k===kind));
+    d.querySelectorAll(".sw").forEach(b=>b.classList.toggle("on",b.dataset.c===color))};
+  d.innerHTML=`<div class="box" role="dialog" aria-label="New takeoff item"><h3>New takeoff item</h3>
+    <label for="idName">What are you measuring?</label><input type="text" id="idName" maxlength="40" placeholder="External wall, slab, power points..." autocomplete="off">
+    <label>Measured as</label><div class="seg"><button data-k="len">Length (m)</button><button data-k="area">Area (m&sup2;)</button><button data-k="count">Count (each)</button></div>
+    <label>Colour on the plan</label><div>${ITEM_COLORS.map(c=>`<i class="sw" data-c="${c}" style="background:${c}"></i>`).join("")}</div>
+    <div class="act"><button class="btn" id="idCancel">Cancel</button><button class="btn primary" id="idOk">Create and measure</button></div></div>`;
+  document.body.appendChild(d);paint();
+  const close=()=>d.remove(),name=d.querySelector("#idName");name.focus();
+  d.addEventListener("click",e=>{
+    if(e.target===d||e.target.id==="idCancel")return close();
+    const k=e.target.closest("[data-k]");if(k){kind=k.dataset.k;paint()}
+    const c=e.target.closest(".sw");if(c){color=c.dataset.c;paint()}
+    if(e.target.id==="idOk")ok()});
+  d.addEventListener("keydown",e=>{if(e.key==="Escape")close();if(e.key==="Enter")ok()});
+  async function ok(){
+    const nm=name.value.trim();if(!nm){name.focus();return}
+    try{const j=await itemRequest({add:{name:nm,kind,color}});
+      try{sessionStorage.setItem("qd-new-item",String(j.items[j.items.length-1].id))}catch(e){}
+      location.reload()}catch(e){alert(e.message)}}
+}
+function itemActions(l){
+  return `<div class="itact">${ITEM_COLORS.map(c=>`<i class="sw ${c===l.hex?"on":""}" data-itc="${c}" title="Change colour" style="background:${c}"></i>`).join("")}<a class="mlink" id="itDel">Delete item</a></div>`}
+function renderItemLegend(){
+  const pl=$("#plan");if(!pl)return;
+  let el=$("#itemLeg");
+  const its=LINES.filter(l=>l.it);
+  if(!its.length){if(el)el.remove();return}
+  if(!el){el=document.createElement("div");el.id="itemLeg";el.className="itemleg";pl.appendChild(el)}
+  el.innerHTML=its.map(l=>`<div><i style="background:${esc(l.hex)}"></i>${esc(l.ds)}<b>${fmt(l.q)} ${l.u}</b></div>`).join("")}
+
+/* --- snapping to the sheet's own line work (a vector PDF), and picking a room --- */
+function buildGeo(segs){
+  const cs=24,cells=new Map();
+  segs.forEach((s,si)=>{
+    const len=Math.hypot(s[2]-s[0],s[3]-s[1]),n=Math.max(1,Math.ceil(len/(cs/2)));
+    let last="";
+    for(let i=0;i<=n;i++){
+      const x=s[0]+(s[2]-s[0])*i/n,y=s[1]+(s[3]-s[1])*i/n,k=Math.floor(x/cs)+","+Math.floor(y/cs);
+      if(k===last)continue;last=k;
+      let a=cells.get(k);if(!a){a=[];cells.set(k,a)}if(a[a.length-1]!==si)a.push(si)}});
+  return {cs,cells,segs}}
+async function ensureGeo(page){
+  if(GEO[page]!==undefined)return;
+  GEO[page]=null;
+  try{const r=await fetch(`/api/project/${PID}/geometry/${page+1}`);GEO[page]=r.ok?buildGeo((await r.json()).segs):{cs:24,cells:new Map(),segs:[]}}
+  catch(e){GEO[page]={cs:24,cells:new Map(),segs:[]}}
+  if(TOOL.on)renderTools()}
+function snapTo(pt){       // {pt, snapped}: an end of a wall within reach first, else the nearest point along one
+  const g=GEO[V.page];if(!SNAP.on||!g||!g.segs.length)return {pt,snapped:false};
+  const R=10/V.k,cs=g.cs,seen=new Set();let end=null,ed=R,on=null,od=R*.8;
+  for(let cx=Math.floor((pt[0]-R)/cs);cx<=Math.floor((pt[0]+R)/cs);cx++)for(let cy=Math.floor((pt[1]-R)/cs);cy<=Math.floor((pt[1]+R)/cs);cy++){
+    for(const si of g.cells.get(cx+","+cy)||[]){
+      if(seen.has(si))continue;seen.add(si);
+      const s=g.segs[si],bonus=s[4]>=.4?R*.2:0;
+      for(const q of [[s[0],s[1]],[s[2],s[3]]]){const d=Math.hypot(q[0]-pt[0],q[1]-pt[1])-bonus;if(d<ed){ed=d;end=q}}
+      const dx=s[2]-s[0],dy=s[3]-s[1],L=dx*dx+dy*dy;let t=L?((pt[0]-s[0])*dx+(pt[1]-s[1])*dy)/L:0;t=Math.max(0,Math.min(1,t));
+      const q=[s[0]+t*dx,s[1]+t*dy],d=Math.hypot(q[0]-pt[0],q[1]-pt[1])-bonus;if(d<od){od=d;on=q}}}
+  const best=end||on;return best?{pt:best,snapped:true}:{pt,snapped:false}}
+function showSnap(e,pt){
+  const dot=document.getElementById("snapDot");if(!dot)return;
+  const sn=TOOL.on&&!TOOL.room&&!e.shiftKey?snapTo(pt):{snapped:false};
+  if(sn.snapped){dot.setAttribute("cx",sn.pt[0]);dot.setAttribute("cy",sn.pt[1]);dot.setAttribute("r",(6/V.k).toFixed(2))}else dot.setAttribute("r","0")}
+async function pickRoom(pt){
+  const l=curLine();if(!l||!TOOL.on)return;
+  const note=$("#tools2 .meas");if(note)note.innerHTML="Finding the room...";
+  try{
+    const r=await fetch(`/api/project/${PID}/room`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:V.page+1,x:pt[0],y:pt[1]})});
+    let j={};try{j=await r.json()}catch(e){}
+    if(!r.ok){if(note)note.innerHTML=j.error||"Could not find a room there.";return}
+    (MEAS[l.el]=MEAS[l.el]||[]).push({page:V.page,kind:"area",pts:j.pts});
+    recomputeEl(l.el);TOOL.on=false;TOOL.room=false;TOOL.pts=[];renderAll();renderTools();drawOverlays()
+  }catch(e){if(note)note.innerHTML="Could not find a room there."}}
+
 /* --- clean up: leave an area out of colour reading; combine: add several colour lines into one --- */
 const boxesOn=()=>((PROJ&&PROJ.ignore)||{})[V.page+1]||[];
 const jsonH={"Content-Type":"application/json"};
@@ -715,10 +815,14 @@ function renderTools(){
   el.innerHTML=CLEAN.on
     ?`<button class="btn" id="tCleanCan">Cancel</button><div class="meas">Click two opposite corners of the area to leave out, such as a logo, a stamp or the title block${CLEAN.pts.length?" (1 of 2 set)":""}.<br>Esc cancels</div>`
     :TOOL.on
-    ?`<button class="btn live" id="tFin">Finish</button><button class="btn" id="tCan">Cancel</button><div class="meas">${liveText()}</div>`
+    ?`<button class="btn live" id="tFin">Finish</button><button class="btn" id="tCan">Cancel</button>`
+      +(GEO[V.page]&&GEO[V.page].segs.length?`<button class="btn ${SNAP.on?"live":""}" id="tSnap" title="Snap to the drawing's own lines. Hold Shift to place a point freely">Snap ${SNAP.on?"on":"off"}</button>`:"")
+      +(l&&l.mt==="area"&&GEO[V.page]&&GEO[V.page].segs.length?`<button class="btn ${TOOL.room?"live":""}" id="tRoom" title="Click inside a closed room to take its outline">Pick room</button>`:"")
+      +`<div class="meas">${liveText()}</div>`
     :`<button class="btn" id="tMeas" ${dis?"disabled":""} title="${!scaleOk(V.page)?"Confirm this sheet's scale first":"Draw on the plan to set the quantity"}"><svg class="i" viewBox="0 0 16 16"><path d="M2 12l3-3 2 2 5-6M2 14h12"/></svg>Measure ${l?l.mk+" ("+MT_NAME[l.mt]+")":""}</button>`
      +(SELS.el!=null?`<button class="btn" id="tDel">Delete shape <span class="kbd">Del</span></button>`:"")
      +(MEAS[E]&&MEAS[E].length?`<span class="meas">${MEAS[E].length} shape${MEAS[E].length>1?"s":""} on this element${SELS.el==null?". Click a shape to select, drag a corner to adjust":""}</span>`:"")
+     +(PROJ&&!PROJ.sample&&PID?`<button class="btn" id="tNew" title="Add something to measure, with its own colour">+ New item</button>`:"")
      +(PROJ&&!PROJ.sample&&PID?`<button class="btn" id="tClean" title="Drag out an area to leave out of colour reading, such as a logo or title block"><svg class="i" viewBox="0 0 16 16"><path d="M2.500 2.500h11v11h-11zM5 11l6-6"/></svg>Clean up area</button>`:"")
      +(boxesOn().length?`<button class="btn" id="tCleanReset" title="Bring back the areas left out on this sheet">Reset clean-up (${boxesOn().length})</button>`:"")
      +(PICK.size>1?`<button class="btn live" id="tComb">Combine ${PICK.size} lines</button>`:"")
@@ -727,6 +831,9 @@ function renderTools(){
   const f=$("#tFin");if(f)f.onclick=finishShape;
   const dl=$("#tDel");if(dl)dl.onclick=deleteShape;
   const c=$("#tCan");if(c)c.onclick=cancelMeasure;
+  const tsn=$("#tSnap");if(tsn)tsn.onclick=()=>{SNAP.on=!SNAP.on;renderTools()};
+  const trm=$("#tRoom");if(trm)trm.onclick=()=>{TOOL.room=!TOOL.room;renderTools()};
+  const tn=$("#tNew");if(tn)tn.onclick=newItemDialog;
   const tc=$("#tClean");if(tc)tc.onclick=()=>{CLEAN.on=true;CLEAN.pts=[];renderTools();drawOverlays()};
   const tcc=$("#tCleanCan");if(tcc)tcc.onclick=cancelClean;
   const tcr=$("#tCleanReset");if(tcr)tcr.onclick=resetClean;
@@ -736,9 +843,9 @@ function renderTools(){
 }
 function startMeasure(){
   const l=curLine();if(!l||!toolOK())return;
-  if(l.sheet-1!==V.page)setPage(l.sheet-1);
-  TOOL.on=true;TOOL.pts=[];renderTools();drawOverlays()}
-function cancelMeasure(){TOOL.on=false;TOOL.pts=[];renderTools();drawOverlays()}
+  if(!l.it&&l.sheet-1!==V.page)setPage(l.sheet-1);
+  TOOL.on=true;TOOL.pts=[];TOOL.room=false;ensureGeo(V.page);renderTools();drawOverlays()}
+function cancelMeasure(){TOOL.on=false;TOOL.pts=[];TOOL.room=false;renderTools();drawOverlays()}
 function addPoint(pt){
   const l=curLine();if(!TOOL.on||!l)return;
   if(l.mt==="count"){(MEAS[l.el]=MEAS[l.el]||[]).push({page:V.page,kind:"count",pts:[pt]});recomputeEl(l.el);renderAll();TOOL.on=true;renderTools();drawOverlays();return}
@@ -904,7 +1011,7 @@ function renderTable(){
     });
   });
   if(n===0)h+=LINES.length===0
-    ?`<tr><td colspan="7" style="height:220px;text-align:center;color:var(--ink-2);white-space:normal;padding:0 40px">${PROJ&&PROJ.message?PROJ.message:"No takeoff lines yet."}<br><span style="color:var(--ink-3)">The sheets are loaded on the left. Set each sheet's scale to get ready to measure.</span>${PROJ&&!PROJ.sample&&PROJ.id?`<br><button class="btn primary" style="margin-top:14px" data-read>Read markups</button><div class="note" id="readMsg" style="margin-top:8px;max-width:520px"></div>`:""}</td></tr>`
+    ?`<tr><td colspan="7" style="height:220px;text-align:center;color:var(--ink-2);white-space:normal;padding:0 40px">${PROJ&&PROJ.message?PROJ.message:"No takeoff lines yet."}<br><span style="color:var(--ink-3)">The sheets are loaded on the left. Set each sheet's scale to get ready to measure.</span>${PROJ&&!PROJ.sample&&PROJ.id?`<br><button class="btn primary" style="margin-top:14px" data-newitem>+ New item</button> <button class="btn" style="margin-top:14px" data-read>Read markups</button><div class="note" id="readMsg" style="margin-top:8px;max-width:520px"></div>`:""}</td></tr>`
     :`<tr><td colspan="7" style="height:160px;text-align:center;color:var(--ink-3)">No lines match this filter. <button class="btn" style="margin-left:8px" id="clr">Clear filters</button></td></tr>`;
   $("#tbl").innerHTML=h+"</tbody></table>";
   const c=$("#clr");if(c)c.onclick=()=>{st.filter="all";st.q="";$("#q").value="";renderAll()};
@@ -942,7 +1049,7 @@ function renderDrawer(){
   const l=LINES.find(x=>x.id===st.sel);if(!l){$("#drawer").innerHTML="";return}
   $("#drawer").innerHTML=`
    <div><h3>${esc(l.mk)}, ${esc(l.ds)}</h3>
-     <div class="basis">basis <b>${l.basis}</b><br>result <b>${fmt(l.q)} ${l.u}</b> &middot; ${MEAS[l.el]&&MEAS[l.el].length?`<b>measured on plan</b> (${MEAS[l.el].length} shape${MEAS[l.el].length>1?"s":""})<a class="mlink" id="clrM">clear</a>`:(l.el<0?"added by the AI":l.lk?"measured from the colour on sheet "+SHEETS[l.sheet-1].n+"; its pixels are shown in <b style=\"color:#e600b8\">magenta</b> on the plan. Ctrl or Cmd-click other colour lines to combine them":"from sheet "+SHEETS[l.sheet-1].n+" legend")}</div></div>
+     <div class="basis">basis <b>${l.basis}</b><br>result <b>${fmt(l.q)} ${l.u}</b> &middot; ${MEAS[l.el]&&MEAS[l.el].length?`<b>measured on plan</b> (${MEAS[l.el].length} shape${MEAS[l.el].length>1?"s":""})<a class="mlink" id="clrM">clear</a>`:(l.el<0?"added by the AI":l.it?"measure it on the plan: choose Measure above, then click along the drawing (it snaps to the walls)":l.lk?"measured from the colour on sheet "+SHEETS[l.sheet-1].n+"; its pixels are shown in <b style=\"color:#e600b8\">magenta</b> on the plan. Ctrl or Cmd-click other colour lines to combine them":"from sheet "+SHEETS[l.sheet-1].n+" legend")}${l.it?itemActions(l):""}</div></div>
    <div class="fld">
      ${[["Length","L"],["Width","W"],["Height","H"],["Area","A"],["Count","N"],[l.calc==="bar"?"kg/m":"kg/m2","K"],["Openings","O"],["Factor","R"]].filter(([t,k])=>l.n[k]!=null&&!(k==="N"&&l.mt!=="count"&&l.n.N===1)).map(([t,k])=>`<label>${t}<input class="num" data-k="${k}" value="${l.n[k]}" inputmode="decimal"></label>`).join("")}
    </div>
@@ -1092,6 +1199,7 @@ function setPage(i,keep){
   const ov=$("#ovl");ov.setAttribute("viewBox",`0 0 ${PAGE_W} ${PAGE_H}`);ov.setAttribute("width",PAGE_W);ov.setAttribute("height",PAGE_H);
   $("#pageLbl").innerHTML=`<b>${esc(SHEETS[i].n)}</b> ${esc(SHEETS[i].t)}`;$("#pageNo").textContent=`${i+1} / ${SHEETS.length}`;
   renderTabs();CAL.on=false;CAL.pts=[];$("#plan").classList.remove("cal");renderScale();drawOverlays();if(!keep)fitView();
+  if(TOOL.on)ensureGeo(i);
 }
 function drawOverlays(){
   const g=$("#ovl");if(!g)return;
@@ -1110,7 +1218,7 @@ function drawOverlays(){
   const col=id=>id===curEl()?"var(--accent)":"var(--ink-2)";
   Object.entries(MEAS).forEach(([id,list])=>list.forEach((sh,si)=>{if(sh.page!==V.page)return;
     const isSel=SELS.el===+id&&SELS.idx===si;
-    const c=isSel?"var(--accent)":col(+id),w=((isSel?3.4:2)/V.k).toFixed(2),pts=sh.pts.map(q=>q.join(",")).join(" "),a=sh.pts[0],k=(12/V.k).toFixed(2);
+    const c=lineHex(id)||(isSel?"var(--accent)":col(+id)),w=((isSel?3.4:2)/V.k).toFixed(2),pts=sh.pts.map(q=>q.join(",")).join(" "),a=sh.pts[0],k=(12/V.k).toFixed(2);
     const lbl=sh.kind==="count"?"":`<text class="lbl" x="${sh.pts[Math.floor(sh.pts.length/2)][0]+4}" y="${sh.pts[Math.floor(sh.pts.length/2)][1]-4}" font-size="${k}" font-family="Geist Mono,monospace" fill="${c}" stroke="#fff" stroke-width="${(3/V.k).toFixed(2)}" paint-order="stroke">${shapeValue(sh).toFixed(2)} ${sh.kind==="len"?"m":"m2"}</text>`;
     if(sh.kind==="area")h+=`<polygon class="src" points="${pts}" fill="${c}" fill-opacity=".16" stroke="${c}" stroke-width="${w}"/>`;
     else if(sh.kind==="len")h+=`<polyline class="src" points="${pts}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linejoin="round"/>`;
@@ -1128,7 +1236,8 @@ function drawOverlays(){
     if(c.length===2)h+=`<line class="src" x1="${c[0][0]}" y1="${c[0][1]}" x2="${c[1][0]}" y2="${c[1][1]}" stroke="var(--accent)" stroke-width="${w}"/>`;
     c.forEach(q=>h+=`<circle class="pt" cx="${q[0]}" cy="${q[1]}" r="${r}" fill="var(--surface)" stroke="var(--accent)" stroke-width="${w}"/>`);
   }
-  g.innerHTML=h;
+  h+=`<circle id="snapDot" cx="0" cy="0" r="0" fill="none" stroke="var(--accent)" stroke-width="${(2/V.k).toFixed(2)}" pointer-events="none"/>`;
+  g.innerHTML=h;renderItemLegend();
 }
 function flyTo(page,box){
   const el=$("#plan");V.flash={page,box};
@@ -1155,6 +1264,7 @@ function renderPlan(){
       if(!TOOL.on&&!CAL.on&&!CLEAN.on){const v=findVertex(toPage(e));if(v){DRAG={...v,moved:false};el.setPointerCapture(e.pointerId);el.classList.add("drag");return}}
       d={x:e.clientX,y:e.clientY,ox:V.x,oy:V.y};el.setPointerCapture(e.pointerId);el.classList.add("drag")});
     el.addEventListener("pointermove",e=>{
+      if(TOOL.on&&!d){const r=el.getBoundingClientRect();showSnap(e,[(e.clientX-r.left-V.x)/V.k,(e.clientY-r.top-V.y)/V.k])}
       if(DRAG){const sh=MEAS[DRAG.el][DRAG.si];sh.pts[DRAG.vi]=toPage(e);DRAG.moved=true;
         recomputeEl(DRAG.el);
         if(!DRAG.raf)DRAG.raf=requestAnimationFrame(()=>{if(!DRAG)return;DRAG.raf=0;drawOverlays();renderTable();renderDrawer();renderSummary();scheduleSync()});return}
@@ -1170,7 +1280,8 @@ function renderPlan(){
         else if(SELS.el!=null){SELS.el=null;SELS.idx=null;renderTools();drawOverlays()}
       }
       if(d&&TOOL.on&&moved<4&&e.type==="pointerup"){
-        const r=el.getBoundingClientRect();addPoint([(e.clientX-r.left-V.x)/V.k,(e.clientY-r.top-V.y)/V.k]);
+        const r=el.getBoundingClientRect(),raw=[(e.clientX-r.left-V.x)/V.k,(e.clientY-r.top-V.y)/V.k];
+        if(TOOL.room)pickRoom(raw);else addPoint(e.shiftKey?raw:snapTo(raw).pt);
       }
       if(d&&CLEAN.on&&moved<4&&e.type==="pointerup"){
         const r=el.getBoundingClientRect();CLEAN.pts.push([(e.clientX-r.left-V.x)/V.k,(e.clientY-r.top-V.y)/V.k]);
@@ -1196,7 +1307,7 @@ function applyFocus(){
   if(sh){const xs=sh.pts.map(q=>q[0]),ys=sh.pts.map(q=>q[1]),x=Math.min(...xs),y=Math.min(...ys);
     flyTo(sh.page,[x-30,y-30,Math.max(...xs)-x+60,Math.max(...ys)-y+60]);return}
   if(l.src){flyTo(l.sheet-1,l.src);return}
-  if(l.sheet-1!==V.page){V.flash=null;setPage(l.sheet-1)}
+  if(!l.it&&l.sheet-1!==V.page){V.flash=null;setPage(l.sheet-1)}      // a takeoff item is not tied to a sheet
 }
 function renderTabs(){
   $("#tabs").innerHTML=`<div class="sheets">`+SHEETS.map((s,i)=>`<button class="${i===V.page?"on":""}" data-sh="${i}">${s.n}<small>${s.c||"-"}</small></button>`).join("")+`</div><button class="pop" id="popBtn" title="Open the plan in its own window"><svg class="i" viewBox="0 0 16 16"><path d="M9 2.500h4.500V7M13.500 2.500L7.500 8.500M11 9.500V13H3V5h3.500"/></svg>Pop out</button>`;
@@ -1437,7 +1548,7 @@ $("#pdfBtn").onclick=async()=>{
   const shapes=[];
   Object.entries(MEAS).forEach(([id,list])=>{const l=LINES.find(x=>x.el===+id);
     list.forEach(sh=>{const v=shapeValue(sh),u=sh.kind==="len"?" m":sh.kind==="area"?" m2":"";
-      shapes.push({page:sh.page,kind:sh.kind,pts:sh.pts,label:l?l.mk:"",text:sh.kind==="count"?"":v.toFixed(2)+u})})});
+      shapes.push({page:sh.page,kind:sh.kind,pts:sh.pts,label:l?l.mk:"",color:l&&l.hex||"",text:sh.kind==="count"?"":v.toFixed(2)+u})})});
   if(!shapes.length){msg("Measure something first");return}
   b.disabled=true;b.textContent="Building...";
   try{
@@ -1657,6 +1768,9 @@ async function readSheets(kind,btn){
   }catch(e){busy(0);if(msg())msg().textContent=e.message;else alert(e.message)}
 }
 document.addEventListener("click",e=>{
+  if(e.target.closest("[data-newitem]"))return newItemDialog();
+  const sw=e.target.closest(".sw[data-itc]");if(sw){const l=curLine();if(l&&l.it)itemRequest({recolor:{id:l.it,color:sw.dataset.itc}}).then(()=>location.reload()).catch(x=>alert(x.message));return}
+  if(e.target.id==="itDel"){const l=curLine();if(l&&l.it&&confirm(`Delete the item "${l.ds}" and what was measured for it?`)){delete MEAS[l.el];itemRequest({delete:l.it}).then(()=>location.reload()).catch(x=>alert(x.message))}return}
   const b=e.target.closest("[data-read],#readBtn");if(b)return readSheets("logic",b);
   if(e.target.closest("#aiBtn"))readSheets("ai");
 });
@@ -1667,6 +1781,11 @@ document.addEventListener("dblclick",async e=>{
   if(r.ok)location.reload();
 });
 window.qdBooted=boot();
+window.qdBooted.then(()=>{
+  let id=null;try{id=sessionStorage.getItem("qd-new-item");sessionStorage.removeItem("qd-new-item")}catch(e){}
+  const l=id&&LINES.find(x=>x.it===+id);if(!l)return;
+  st.sel=l.id;renderAll();
+  if(toolOK())startMeasure()});
 </script>
 </body>
 </html>
