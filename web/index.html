@@ -702,6 +702,10 @@ function liveText(){
   return `Measuring <b>${l.mk}</b> by ${MT_NAME[l.mt]}: <b>${l.mt==="count"?v:v.toFixed(2)} ${u}</b><br>${how}. Esc cancels, Backspace undoes`;
 }
 /* --- takeoff items: a name, what is measured and a colour, like Bluebeam or PlanSwift --- */
+async function renameItem(l){
+  const name=prompt("Rename this item",l.ds);if(name===null)return;
+  if(!name.trim()){alert("Give the item a name.");return}
+  try{await itemRequest({rename:{id:l.it,name:name.trim()}});location.reload()}catch(e){alert(e.message)}}
 const ITEM_COLORS=["#e4572e","#17bebb","#7b2cbf","#f3a712","#2e86ab","#a8c256","#d1495b","#00798c","#8d5a97","#6c757d"];
 const lineHex=el=>{const l=LINES.find(x=>x.el===+el);return l&&l.hex||null};
 async function itemRequest(body){
@@ -746,7 +750,7 @@ function newItemDialog(){
 }
 function itemActions(l){
   const opn=l.calc==="wall"?`<div class="opn">Take off openings: <input id="opN" inputmode="numeric" value="1" aria-label="How many"> &times; <input id="opW" inputmode="decimal" value="0.82" aria-label="Width in metres"> m wide &times; <input id="opH" inputmode="decimal" value="2.04" aria-label="Height in metres"> m high <button class="btn" id="opAdd">Deduct</button></div>`:"";
-  return opn+`<div class="itact">${ITEM_COLORS.map(c=>`<i class="sw ${c===l.hex?"on":""}" data-itc="${c}" title="Change colour" style="background:${c}"></i>`).join("")}<a class="mlink" id="itDel">Delete item</a></div>`}
+  return opn+`<div class="itact">${ITEM_COLORS.map(c=>`<i class="sw ${c===l.hex?"on":""}" data-itc="${c}" title="Change colour" style="background:${c}"></i>`).join("")}</div><div class="itact"><button class="btn" id="itRen">Rename</button> <button class="btn" id="itDel">Delete item</button></div>`}
 function renderItemLegend(){
   const pl=$("#plan");if(!pl)return;
   let el=$("#itemLeg");
@@ -939,7 +943,7 @@ function openGuide(){
   d.innerHTML=`<div class="box guide" role="dialog" aria-label="Step-by-step guide">
     <h3>Step by step</h3><p class="lead">From a plan PDF to a checked takeoff. Rules and your own measuring come first, AI is a second opinion, and you verify last.</p>
     <h4>1. Start</h4><ol>
-      <li>Open a project, or go to <b>Upload</b> and add the plan PDF. To redo a project, press <b>Reset</b>: it clears your measurements and everything read from the markups. The plans and your takeoff items stay.</li>
+      <li>Open a project, or go to <b>Upload</b> and add the plan PDF. To redo a project, press <b>Reset</b>: it clears your measurements, your takeoff items and everything read from the markups. The uploaded plans stay.</li>
       <li>Go to <b>Review</b> (the Takeoff screen) and pick a drawing sheet from the tabs above the plan.</li>
       <li>Check the scale bar. If it shows the right ratio, carry on. If not, use <b>Enter scale</b> or <b>Check with 2 points</b>. A sheet's scale must be set before anything is measured.</li></ol>
     <h4>2a. A clean plan (a PDF exported from CAD)</h4><ol>
@@ -1218,7 +1222,7 @@ function renderTable(){
     h+=`<tr class="g ${shut?"shut":""}" data-g="${gi}" style="top:30px"><td colspan="4"><svg class="i chev" viewBox="0 0 16 16"><path d="M4 6l4 4 4-4"/></svg>${g.toUpperCase()} <span style="color:var(--ink-3);font-weight:400;margin-left:6px">${rows.length} lines</span></td>${PRICING.on?`<td class="tot r">${anyc?money(gc):""}</td><td colspan="2"></td>`:`<td class="tot r">${tot==null?"":fmt(tot,1)+" "+units[0]}</td>`}</tr>`;
     if(!shut)rows.forEach(l=>{
       const [lab,cls]=STT[l.st];
-      h+=`<tr class="l ${l.id===st.sel?"sel":""} ${PICK.has(l.id)?"pick":""}" data-id="${l.id}" style="--n:${n++}"><td class="mk" title="${esc(l.mk)}">${esc(l.mk)}</td><td class="ds" ${l.lk?`data-lk="${esc(l.lk)}" title="Double-click to name this markup"`:`title="${esc(l.ds)}"`}>${l.hex?`<i style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:${esc(l.hex)}"></i>`:""}${esc(l.ds)}${dupBadge(l)}</td><td class="r num">${fmt(l.q)} <span class="u">${l.u}</span></td>${PRICING.on?`<td class="r num">${rateCell(l)}</td><td class="r num" title="${costOf(l)==null?"":`Materials ${matCost(l)==null?"none":money(matCost(l))}. Labour ${labHours(l)==null?"none":fmt(labHours(l),1)+" hrs"+(labCost(l)==null?", no labour rate":" = "+money(labCost(l)))}`}">${costOf(l)==null?`<span style="color:var(--ink-3)">&mdash;</span>`:fmt(costOf(l))}</td>`:`<td class="dm num hide-s">${l.dm}</td>`}<td>${agCell(l)}</td><td><span class="stt ${cls}"><span class="dot"></span>${lab}</span></td></tr>`;
+      h+=`<tr class="l ${l.id===st.sel?"sel":""} ${PICK.has(l.id)?"pick":""}" data-id="${l.id}" style="--n:${n++}"><td class="mk" title="${esc(l.mk)}">${esc(l.mk)}</td><td class="ds" ${l.lk?`data-lk="${esc(l.lk)}" title="Double-click to name this markup"`:l.it?`data-it="${l.it}" title="Double-click to rename this item"`:`title="${esc(l.ds)}"`}>${l.hex?`<i style="display:inline-block;width:9px;height:9px;border-radius:2px;margin-right:6px;background:${esc(l.hex)}"></i>`:""}${esc(l.ds)}${dupBadge(l)}</td><td class="r num">${fmt(l.q)} <span class="u">${l.u}</span></td>${PRICING.on?`<td class="r num">${rateCell(l)}</td><td class="r num" title="${costOf(l)==null?"":`Materials ${matCost(l)==null?"none":money(matCost(l))}. Labour ${labHours(l)==null?"none":fmt(labHours(l),1)+" hrs"+(labCost(l)==null?", no labour rate":" = "+money(labCost(l)))}`}">${costOf(l)==null?`<span style="color:var(--ink-3)">&mdash;</span>`:fmt(costOf(l))}</td>`:`<td class="dm num hide-s">${l.dm}</td>`}<td>${agCell(l)}</td><td><span class="stt ${cls}"><span class="dot"></span>${lab}</span></td></tr>`;
     });
   });
   if(n===0)h+=LINES.length===0
@@ -1682,7 +1686,7 @@ const IS_POP=new URLSearchParams(location.search).has("plan");
 const ME=Math.random().toString(36).slice(2);
 const BC=typeof BroadcastChannel!=="undefined"?new BroadcastChannel("qd-"+PID+(DEMO_AI?"-demo":"")):null;
 let popWin=null,popTimer=null,REMOTE=false,syncT=null;
-const fp=l=>l.ds+"|"+l.calc+"|"+l.u;   // what a line is, so saved edits are not applied to a different line that now has its id
+const fp=l=>l.it?"item"+l.it+"|"+l.calc+"|"+l.u:l.ds+"|"+l.calc+"|"+l.u;      // an item is known by its id, so renaming it keeps its saved height and openings   // what a line is, so saved edits are not applied to a different line that now has its id
 function buildState(){
   return {v:2,sel:st.sel,page:V.page,meas:MEAS,
     scales:SCALES.map(x=>({ratio:x.ratio,status:x.status,src:x.src,note:x.note})),
@@ -1838,7 +1842,7 @@ function applyState(d,live){
   if(live)Object.keys(MEAS).forEach(k=>delete MEAS[k]);          // a live update replaces the shapes, it does not add to them
   Object.keys(d.meas||{}).forEach(k=>MEAS[k]=d.meas[k]);
   (d.scales||[]).forEach((x,i)=>{if(SCALES[i])Object.assign(SCALES[i],x)});
-  (d.lines||[]).forEach(x=>{const l=LINES.find(y=>y.id===x.id);if(l&&(x.f==null||x.f===fp(l))){l.n=x.n;l.q=x.q;l.dm=x.dm;l.st=x.st;l.src2=x.src2;if(x.ag==="resolved"){l.ag="resolved";l.agr=""}if(x.orig)l.orig=x.orig;if(x.pm){l.pm=x.pm;l.pm0=x.pm0;l.rate=x.rate==null?null:x.rate;l.lhpu=x.lhpu==null?null:x.lhpu;l.lrate=x.lrate==null?null:x.lrate}}});
+  (d.lines||[]).forEach(x=>{const l=LINES.find(y=>y.id===x.id);if(l&&(x.f==null||x.f===fp(l)||(l.it&&x.f===l.ds+"|"+l.calc+"|"+l.u))){l.n=x.n;l.q=x.q;l.dm=x.dm;l.st=x.st;l.src2=x.src2;if(x.ag==="resolved"){l.ag="resolved";l.agr=""}if(x.orig)l.orig=x.orig;if(x.pm){l.pm=x.pm;l.pm0=x.pm0;l.rate=x.rate==null?null:x.rate;l.lhpu=x.lhpu==null?null:x.lhpu;l.lrate=x.lrate==null?null:x.lrate}}});
   if(d.pricing){PRICING.on=!!d.pricing.on;PRICING.list=d.pricing.list||null;Object.assign(PRICING.pct,d.pricing.pct||{});PRICING.currency=d.pricing.currency||"AUD";PRICING.labourRate=d.pricing.labourRate==null?null:d.pricing.labourRate}
   if(d.sel&&LINES.some(l=>l.id===d.sel))st.sel=d.sel;
   if(live)return;
@@ -1846,7 +1850,7 @@ function applyState(d,live){
   const el=$("#saveLbl");if(el)el.textContent="Restored "+stamp(d.saved*1000);
 }
 $("#resetBtn").onclick=async()=>{
-  if(!confirm("Reset this project? This clears your saved measurements, scale confirmations and edits, and everything read from the markups (colour lines, names, combined lines and clean-up areas). Your takeoff items stay, and the uploaded plans are not touched."))return;
+  if(!confirm("Reset this project? This deletes your measurements, your takeoff items, scale confirmations and edits, and everything read from the markups (colour lines, names, combined lines and clean-up areas). The uploaded plans are not touched."))return;
   try{
     const a=await fetch(`/api/project/${PID}/state`,{method:"DELETE"}),b=await fetch(`/api/project/${PID}/read?all=1`,{method:"DELETE"});
     if(!a.ok||!b.ok)throw 0}
@@ -1923,7 +1927,7 @@ if(IS_POP){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on'
     {sel:"#shareBtn",t:"Share link",b:"Creates a private download link for the client, with an expiry. They need no account."},
     {sel:"#pdfBtn",t:"Marked-up PDF",b:"Downloads the sheets with the shapes you measured drawn on them, in each item's colour."},
     {sel:"#exportBtn",t:"Export workbook",b:"Downloads the takeoff with live formulas. To use a client's own Excel instead, use Fill template."},
-    {sel:"#resetBtn",t:"Reset",b:"Starts the project over: clears your measurements and everything read from the markups. The plans and your takeoff items stay."},
+    {sel:"#resetBtn",t:"Reset",b:"Starts the project over: deletes your measurements, your takeoff items and everything read from the markups. The uploaded plans stay."},
     {sel:"#nameBtn",t:"Your name",b:"Set the name your teammates see on projects and shared links, instead of your email."},
     {sel:"#helpBtn",t:"Need this again?",b:"Press this ? button any time for the step-by-step guide, which also replays this tour."}
   ];
@@ -2014,11 +2018,13 @@ document.addEventListener("click",e=>{
     if(!l||!(n>0&&w>0&&h>0)){alert("Enter how many, and each opening's width and height in metres.");return}
     l.n.O=+(((l.n.O||0)+n*w*h).toFixed(4));l.q=qty(l);l.dm=dmOf(l);l.st="pn";
     renderAll();scheduleSync();return}
+  if(e.target.id==="itRen"){const l=curLine();if(l&&l.it)renameItem(l);return}
   if(e.target.id==="itDel"){const l=curLine();if(l&&l.it&&confirm(`Delete the item "${l.ds}" and what was measured for it?`)){delete MEAS[l.el];itemRequest({delete:l.it}).then(()=>location.reload()).catch(x=>alert(x.message))}return}
   const b=e.target.closest("[data-read],#readBtn");if(b)return readSheets("logic",b);
   if(e.target.closest("#aiBtn"))readSheets("ai");
 });
 document.addEventListener("dblclick",async e=>{
+  const ti=e.target.closest("td.ds[data-it]");if(ti){const l=LINES.find(x=>x.it===+ti.dataset.it);if(l)renameItem(l);return}
   const td=e.target.closest("td.ds[data-lk]");if(!td)return;
   const name=prompt("What is this markup? (for example: Strip footing SF1)");if(!name||!name.trim())return;
   const r=await fetch(`/api/project/${PID}/label`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:td.dataset.lk,label:name.trim()})});

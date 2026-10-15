@@ -133,3 +133,24 @@ from core.calc import qty
 assert abs(qty("wall", {"L": 30, "H": 2.7, "O": 5.34, "R": None}) - (30 * 2.7 - 5.34)) < 1e-9
 assert abs(qty("prism", {"A": 80, "H": 0.1}) - 8.0) < 1e-9
 print("PASS 30 m x 2.7 m - 5.34 m2 openings = 75.66 m2; 80 m2 x 0.1 m = 8 m3")
+
+# 7. a fresh Read keeps takeoff items; Reset (read?all=1) deletes them
+rid = c.post("/api/projects", data={"files": (io.BytesIO(vector_pdf()), "reset.pdf")}, content_type="multipart/form-data").json["id"]
+c.put(f"/api/project/{rid}/items", json={"add": {"name": "Wall", "kind": "len", "color": "#112233"}})
+c.delete(f"/api/project/{rid}/read")
+assert [l["ds"] for l in c.get(f"/api/project/{rid}").json["lines"] if l.get("it")] == ["Wall"]
+c.delete(f"/api/project/{rid}/read?all=1")
+assert not [l for l in c.get(f"/api/project/{rid}").json["lines"] if l.get("it")]
+print("PASS Reset deletes takeoff items; a fresh Read keeps them")
+
+# 8. rename an item
+c.put(f"/api/project/{rid}/items", json={"add": {"name": "Old name", "kind": "wall", "color": "#445566", "size": 2.7}})
+iid = next(l["it"] for l in c.get(f"/api/project/{rid}").json["lines"] if l.get("ds") == "Old name")
+assert c.put(f"/api/project/{rid}/items", json={"rename": {"id": iid, "name": "  <b>Brick</b> wall  "}}).status_code == 200
+ln = next(l for l in c.get(f"/api/project/{rid}").json["lines"] if l.get("it") == iid)
+assert "<" not in ln["ds"] and ">" not in ln["ds"] and ln["ds"].startswith("b") and ln["ds"].endswith("wall"), ln["ds"]      # markup characters are stripped
+assert ln["u"] == "m2" and ln["n"]["H"] == 2.7, ln
+for bad in ({"rename": {"id": iid, "name": ""}}, {"rename": {"id": iid, "name": "   "}}, {"rename": "x"}):
+    assert c.put(f"/api/project/{rid}/items", json=bad).status_code == 400, bad
+assert c.put(f"/api/project/{rid}/items", json={"rename": {"id": 999, "name": "x"}}).status_code == 404
+print("PASS rename keeps the item's type and height, strips markup, refuses empty and unknown")

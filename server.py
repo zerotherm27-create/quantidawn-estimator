@@ -533,6 +533,16 @@ def takeoff_items(pid):
         for i in items:
             if i["id"] == r.get("id"):
                 i["color"] = r["color"].lower()
+    elif "rename" in body:
+        r = body["rename"] if isinstance(body["rename"], dict) else {}
+        name = clean_label(r.get("name"), 40) if str(r.get("name") or "").strip() else ""
+        if not name:
+            abort(400)
+        if not any(i["id"] == r.get("id") for i in items):
+            abort(404)
+        for i in items:
+            if i["id"] == r.get("id"):
+                i["name"] = name
     elif "delete" in body:
         items = [i for i in items if i["id"] != body["delete"]]
     else:
@@ -620,7 +630,7 @@ def auto_detect(pid):
 @app.delete("/api/project/<pid>/read")
 def clear_markups(pid):
     check_id(pid)
-    colls = ("entries", "ai", "labels", "merges") + (("ignore",) if request.args.get("all") else ())   # a fresh Read keeps clean-up boxes; Reset (all=1) drops them too
+    colls = ("entries", "ai", "labels", "merges") + (("ignore", "items") if request.args.get("all") else ())   # a fresh Read keeps clean-up boxes and takeoff items; Reset (all=1) drops them too
     for coll in colls:
         get_store().doc_delete(coll, pid)
     return jsonify(ok=True)
