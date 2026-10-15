@@ -2021,6 +2021,17 @@ if(IS_POP){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on'
 })();
 
 /* --- read the markups sheet by sheet: the app's own logic first (embedded text, annotations, colour measuring), AI only as a second opinion --- */
+// READMSG_START
+function summariseRead(notes,total){      // what to say when no sheet gave anything: the real reason, not just the first sheet's note
+  const clean=notes.filter(n=>/clean vector drawing/i.test(n)).length,noScale=notes.filter(n=>/set its scale/i.test(n)).length,noColour=notes.filter(n=>/No coloured markups/i.test(n)).length;
+  if(clean)return `${clean} of ${total} sheet${total>1?"s":""} ${clean>1?"are":"is"} a clean drawing with no estimator markup, so there is nothing for Read markups to read. Read markups is for an estimator's marked-up PDF. For a clean plan, press Auto-detect, then + New item, to build the takeoff.`;
+  if(noScale&&!noColour)return `The scale is not set on ${noScale>1?noScale+" sheets":"a sheet"}, so colours cannot be measured. Set each sheet's scale (Enter scale), then press Read markups again.`;
+  if(noColour||noScale)return `No estimator markup was found on any sheet${noScale?` (and ${noScale} sheet${noScale>1?"s have":" has"} no scale set)`:""}. Read markups is for an estimator's marked-up PDF.`;
+  return notes[0]||"Nothing could be read from these sheets."}
+function readOutcome(r){      // after a read: what it actually produced, so a quiet reload is never a mystery. r: {lines, skipped, found, measured, kind}
+  if(r.lines>0)return {kind:"info",msg:`${r.kind==="ai"?"AI check":"Read markups"} added ${r.lines} takeoff line${r.lines>1?"s":""}${r.skipped?`, and left ${r.skipped} row${r.skipped>1?"s":""} it has no rule for (listed under Not taken off)`:""}. Check each against the plan.`};
+  return {kind:"warn",msg:`Read markups found ${r.found?r.found+" row"+(r.found>1?"s":"")+" of text":"something"}${r.measured?` and ${r.measured} colour group${r.measured>1?"s":""}`:""}, but none of it became a takeoff line${r.skipped?` (${r.skipped} row${r.skipped>1?"s":""} matched no takeoff rule)`:""}. On a clean plan that is just notes and schedules: use Auto-detect, then + New item.`}}
+// READMSG_END
 async function readSheets(kind,btn){
   const total=SHEETS.length,msg=()=>document.getElementById("readMsg"),all=[...document.querySelectorAll(kind==="ai"?"#aiBtn":"[data-read],#readBtn")];
   const label=kind==="ai"?"AI check":"Read markups",busy=t=>all.forEach(b=>{b.disabled=!!t;b.textContent=t||label});
@@ -2046,8 +2057,9 @@ async function readSheets(kind,btn){
       found+=j.found||0;measured+=j.measured||0;if(j.source)sources.add(j.source);if(j.note)notes.push(j.note);
     }
     const skipNote=skipped.length?`Skipped without reading (no coloured markup): sheet${skipped.length>1?"s":""} ${skipped.join(", ")}. To read one anyway, run AI check again and type its number.`:"";
-    if(!found&&!measured){busy(0);const t=skipNote||notes[0]||"Nothing could be read from these sheets.";if(msg())msg().textContent=t;else notify(t);return}
+    if(!found&&!measured){busy(0);const t=skipNote||summariseRead(notes,sheets.length);if(msg())msg().textContent=t;else notify(t,"warn");return}
     if(skipNote)notify(skipNote,"info",true);
+    try{sessionStorage.setItem("qd-readsum",JSON.stringify({found,measured,kind}))}catch(e){}
     location.reload();
   }catch(e){busy(0);if(msg())msg().textContent=e.message;else notify(e.message)}
 }
@@ -2094,6 +2106,8 @@ document.addEventListener("dblclick",async e=>{
 window.qdBooted=boot();
 window.qdBooted.then(()=>{
   try{const t=JSON.parse(sessionStorage.getItem("qd-toast")||"null");sessionStorage.removeItem("qd-toast");if(t)showToast(t[0],t[1])}catch(e){}
+  try{const r=JSON.parse(sessionStorage.getItem("qd-readsum")||"null");sessionStorage.removeItem("qd-readsum");
+    if(r){const o=readOutcome({lines:LINES.filter(l=>!l.it).length,skipped:(SKIPPED||[]).length,found:r.found,measured:r.measured,kind:r.kind});showToast(o.msg,o.kind)}}catch(e){}
   let det=null;try{det=JSON.parse(sessionStorage.getItem("qd-detected")||"null");sessionStorage.removeItem("qd-detected")}catch(e){}
   if(det){let last=null;det.forEach(it=>{const l=LINES.find(x=>x.it&&x.ds===it.name&&x.mt===({area:"area",len:"len",count:"count"}[it.kind]));if(!l)return;
       const cur=MEAS[l.el]=MEAS[l.el]||[],same=(a,b)=>a.page===b.page&&a.kind===b.kind&&Math.abs(a.pts[0][0]-b.pts[0][0])<.5&&Math.abs(a.pts[0][1]-b.pts[0][1])<.5;
