@@ -166,5 +166,5 @@ def room_polygon(pdf, index, x, y, zoom=1.5, gap=5.0, max_share=0.4):
         return None                                                  # leaked out through an opening: not a closed room
     for _ in range(r):                                               # take back the bridging margin, but never into a wall
         region = (region | np.roll(region, 1, 0) | np.roll(region, -1, 0) | np.roll(region, 1, 1) | np.roll(region, -1, 1)) & ~walls
-    pts = _simplify(_outline(region), 1.2)
+    pts = _simplify(_outline(region), 3.0 * zoom)                  # about 3 pt: drops wall-thickness jogs and door jambs
     return [[round(float(px) / zoom, 1), round(float(py) / zoom, 1)] for px, py in pts]

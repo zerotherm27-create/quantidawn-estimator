@@ -328,7 +328,10 @@ def read_markups(pid):
     pdf, idx = page_source(pid, n)
     emb = logic_reader.read_embedded(pdf, idx)
     measures, note = [], ""
-    if not emb["entries"]:                                  # flattened page: measure the coloured markups from the sheet's scale
+    if not emb["entries"] and len(geometry.page_segments(pdf, idx)[2]) >= CLEAN_PLAN_SEGS:
+        note = (f"Sheet {n} is a clean vector drawing with no estimator markup, so there is no markup to read. "
+                "Measure it yourself: add a takeoff item (+ New item), then click along the walls. They snap to the drawing.")
+    elif not emb["entries"]:                                # flattened page: measure the coloured markups from the sheet's scale
         try:
             ratio = float((request.get_json(force=True, silent=True) or {}).get("ratio"))        # the scale as set on screen
         except (TypeError, ValueError):
@@ -491,6 +494,7 @@ def merge_markups(pid):
 
 
 ITEM_KINDS = ("len", "area", "count")
+CLEAN_PLAN_SEGS = 300       # a flattened marked-up sheet is a picture (no vector lines); an architect's clean plan has thousands
 
 
 @app.put("/api/project/<pid>/items")

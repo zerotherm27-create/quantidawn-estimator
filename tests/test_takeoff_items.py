@@ -94,3 +94,24 @@ assert r.status_code == 422, r.data
 for bad in ({"page": 1, "x": "a", "y": 1}, {"page": 1, "x": 1}, {"page": "z", "x": 1, "y": 1}):
     assert c.post(f"/api/project/{pid}/room", json=bad).status_code == 400, bad
 print("PASS open interior ok; outside the building and on a wall refused; bad input refused")
+
+# 4. Read markups on a clean vector drawing says so, instead of inventing "markup" from the architect's colours
+d = fitz.open()
+p = d.new_page(width=A3.width, height=A3.height)
+for i in range(400):
+    p.draw_line((100 + i, 100), (100 + i, 300), color=(0, 0, 0), width=0.5)
+p.draw_line((300, 500), (700, 500), color=(0.9, 0.1, 0.1), width=1.0)                 # an architect's red annotation line
+r = c.post("/api/projects", data={"files": (io.BytesIO(d.tobytes()), "clean.pdf")}, content_type="multipart/form-data")
+cid = r.json["id"]
+r = c.post(f"/api/project/{cid}/read", json={"page": 1, "ratio": 100}).json
+assert r["measured"] == 0 and r["found"] == 0 and "no estimator markup" in r["note"] and "New item" in r["note"], r
+assert not [l for l in c.get(f"/api/project/{cid}").json["lines"] if l.get("lk")]
+print("PASS clean vector sheet: no invented markup, and it says what to do")
+
+# 5. the marked-up PDF uses an item's own colour, like the screen
+from core import markup_pdf
+assert markup_pdf.colour_of("X", "#e4572e") == (0xe4 / 255, 0x57 / 255, 0x2e / 255)
+assert markup_pdf.colour_of("X", "red") == markup_pdf.colour_of("X") == markup_pdf.colour_of("X", None)
+sh = markup_pdf.clean_shapes([{"kind": "len", "page": 0, "pts": [[0, 0], [5, 5]], "label": "W", "color": "#112233"}])
+assert sh[0]["color"] == "#112233"
+print("PASS marked-up PDF takes the item's colour")

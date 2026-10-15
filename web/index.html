@@ -1548,7 +1548,7 @@ $("#pdfBtn").onclick=async()=>{
   const shapes=[];
   Object.entries(MEAS).forEach(([id,list])=>{const l=LINES.find(x=>x.el===+id);
     list.forEach(sh=>{const v=shapeValue(sh),u=sh.kind==="len"?" m":sh.kind==="area"?" m2":"";
-      shapes.push({page:sh.page,kind:sh.kind,pts:sh.pts,label:l?l.mk:"",text:sh.kind==="count"?"":v.toFixed(2)+u})})});
+      shapes.push({page:sh.page,kind:sh.kind,pts:sh.pts,label:l?l.mk:"",color:l&&l.hex||"",text:sh.kind==="count"?"":v.toFixed(2)+u})})});
   if(!shapes.length){msg("Measure something first");return}
   b.disabled=true;b.textContent="Building...";
   try{
