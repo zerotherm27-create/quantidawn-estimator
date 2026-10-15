@@ -204,6 +204,13 @@ tr.l.sel td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 .idlg .act{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
 .sw{display:inline-block;width:20px;height:20px;border-radius:6px;margin:2px 4px 2px 0;cursor:pointer;border:2px solid transparent;vertical-align:middle}.sw.on{border-color:var(--ink)}
 .itact{margin-top:8px}
+.idlg .box.guide{width:min(680px,calc(100vw - 32px));max-height:calc(100vh - 48px);overflow:auto;padding:22px 26px}
+.guide h3{margin:0 0 2px;font-size:18px}.guide .lead{color:var(--ink-3);font-size:13px;margin:0 0 14px}
+.guide h4{margin:18px 0 6px;font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:var(--ink-3)}
+.guide ol{margin:0;padding-left:22px}.guide li{margin:6px 0;line-height:1.5;color:var(--ink-2);font-size:13.5px}.guide li b{color:var(--ink);font-weight:600}
+.guide .tip2{background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin:8px 0;font-size:12.5px;color:var(--ink-2);line-height:1.5}
+.guide table{border-collapse:collapse;width:100%;font-size:12.5px;margin-top:4px}.guide td{padding:4px 8px 4px 0;vertical-align:top;color:var(--ink-2)}.guide td:first-child{white-space:nowrap;color:var(--ink);font:500 12px var(--mono)}
+.guide .act{position:sticky;bottom:-22px;background:var(--surface);padding:12px 0 0;margin-top:14px;border-top:1px solid var(--line)}
 .detpanel{position:absolute;right:14px;bottom:62px;z-index:3;width:min(300px,calc(100% - 28px));max-height:52%;overflow:auto;background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px 14px;box-shadow:0 8px 28px rgba(24,24,27,.18);font-size:12.5px;color:var(--ink-2)}
 .detpanel h4{margin:0 0 6px;font-size:13.5px;color:var(--ink);cursor:pointer;display:flex;justify-content:space-between}.detpanel.min>:not(h4){display:none}.detpanel.min h4{margin:0}.detpanel .sub{color:var(--ink-3);font-size:11.5px;margin-bottom:8px}
 .detpanel label{display:flex;gap:8px;align-items:center;padding:3px 0;cursor:pointer}.detpanel label b{font-weight:500;color:var(--ink)}.detpanel label span{margin-left:auto;font:500 11.5px var(--mono);white-space:nowrap}
@@ -445,7 +452,7 @@ body.pop .popnote{display:none}
     <button data-go="pricing" title="Pricing (optional)" aria-label="Pricing"><svg class="i" viewBox="0 0 16 16"><path d="M8 2v12M10.5 5C10 4 9 3.6 8 3.6c-1.4 0-2.5.8-2.5 2s1 1.8 2.5 2.2 2.5.8 2.5 2.2-1.1 2-2.5 2c-1.100 0-2.100-.4-2.600-1.400"/></svg></button>
     <div class="sp"></div>
     <button id="installBtn" title="Install the estimator as an app" aria-label="Install the estimator as an app" hidden><svg class="i" viewBox="0 0 16 16"><path d="M8 2v8m0 0L5 7m3 3l3-3M3 13h10"/></svg></button>
-    <button id="helpBtn" title="How to use the estimator" aria-label="How to use the estimator"><svg class="i" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M6.200 6.300c0-1 .8-1.700 1.800-1.700s1.800.7 1.800 1.600c0 1.200-1.800 1.300-1.800 2.600M8 11.400v.1"/></svg></button>
+    <button id="helpBtn" title="Step-by-step guide and tour" aria-label="Step-by-step guide and tour"><svg class="i" viewBox="0 0 16 16"><circle cx="8" cy="8" r="6"/><path d="M6.200 6.300c0-1 .8-1.700 1.800-1.700s1.800.7 1.800 1.600c0 1.200-1.800 1.300-1.800 2.600M8 11.400v.1"/></svg></button>
     <button id="nameBtn" title="Set the name your teammates see" aria-label="Set your display name" hidden><svg class="i" viewBox="0 0 16 16"><circle cx="8" cy="5.500" r="2.500"/><path d="M3 13.500c.500-2.600 2.600-4 5-4s4.500 1.400 5 4"/></svg></button>
     <button id="logoutBtn" title="Sign out" aria-label="Sign out" hidden><svg class="i" viewBox="0 0 16 16"><path d="M6 2.500H3.500v11H6M10 5l3 3-3 3M13 8H6"/></svg></button>
     <button id="themeBtn" title="Switch between light and dark" aria-label="Switch between light and dark"><svg class="i" id="themeIcon" viewBox="0 0 16 16"></svg></button>
@@ -924,6 +931,48 @@ async function addDetected(){
     try{sessionStorage.setItem("qd-detected",JSON.stringify(plan))}catch(e){}
     location.reload()
   }catch(e){alert(e.message);if(b){b.disabled=false;b.textContent="Add to takeoff"}}}
+
+/* --- the step-by-step guide, opened by the ? button --- */
+function openGuide(){
+  if(document.querySelector(".idlg.gd"))return;
+  const d=document.createElement("div");d.className="idlg gd";
+  d.innerHTML=`<div class="box guide" role="dialog" aria-label="Step-by-step guide">
+    <h3>Step by step</h3><p class="lead">From a plan PDF to a checked takeoff. Rules and your own measuring come first, AI is a second opinion, and you verify last.</p>
+    <h4>1. Start</h4><ol>
+      <li>Open a project, or go to <b>Upload</b> and add the plan PDF. To redo a project, press <b>Reset</b>: it clears your measurements and everything read from the markups. The plans and your takeoff items stay.</li>
+      <li>Go to <b>Review</b> (the Takeoff screen) and pick a drawing sheet from the tabs above the plan.</li>
+      <li>Check the scale bar. If it shows the right ratio, carry on. If not, use <b>Enter scale</b> or <b>Check with 2 points</b>. A sheet's scale must be set before anything is measured.</li></ol>
+    <h4>2a. A clean plan (a PDF exported from CAD)</h4><ol>
+      <li>Press <b>Auto-detect</b>. Rooms, the building outline and door swings are drawn on the plan with a checklist.</li>
+      <li>Untick anything wrong, and check the door count against the plan: swings are not always hinged doors. Press <b>Add to takeoff</b>.</li>
+      <li>Rooms it lists as not found are open plan or have wide openings. Add an <b>Area</b> item and use <b>Pick room</b>, or click the corners.</li>
+      <li>For walls press <b>+ New item</b> and choose <b>Length</b> or <b>Wall area</b> (give the wall height). Press <b>Trace wall</b> and click each wall, one click per straight run.</li>
+      <li>In the item's drawer, deduct doors and windows with <b>Take off openings</b>, and edit the height if it changes.</li>
+      <li>Use an <b>Area</b> item for slabs, or <b>Volume</b> with a depth.</li></ol>
+    <div class="tip2">Auto-detect, Trace wall, Pick room and snapping need a vector PDF. A scan or a flattened picture has no lines to read, so measure those by clicking.</div>
+    <h4>2b. The estimator's marked-up PDF</h4><ol>
+      <li>Upload that file and set the scale on each sheet.</li>
+      <li>Press <b>Read markups</b>. Legend text and annotations are read first, then colours are measured.</li>
+      <li>Click a colour line to see its pixels in magenta on the plan. Double-click its name to say what it is. <b>Clean up area</b> leaves out a logo or legend, and Ctrl or Cmd-click several lines then <b>Combine</b> adds them.</li></ol>
+    <h4>3. Check and finish</h4><ol>
+      <li>Select each line, compare it with the plan, then press <b>Verify line</b>. <b>Flag for review</b> marks one you want to come back to.</li>
+      <li>Optional: <b>AI check</b> for a second opinion, and the <b>Pricing</b> tab for rates.</li>
+      <li>Press <b>Export workbook</b> for the takeoff, or <b>Marked-up PDF</b> for the shapes you measured on the plans. <b>Share link</b> gives a client a private download.</li></ol>
+    <h4>Drawing keys</h4><table>
+      <tr><td>Shift</td><td>Straight line: locks to horizontal, vertical or 45&deg;</td></tr>
+      <tr><td>Alt</td><td>Place a point freely, without snapping</td></tr>
+      <tr><td>type a number, Enter</td><td>Place the next point exactly that many metres along the line you are drawing</td></tr>
+      <tr><td>double-click, Enter</td><td>Finish a line or area (or click the first point to close an area)</td></tr>
+      <tr><td>Backspace</td><td>Undo the last point. Esc cancels</td></tr>
+      <tr><td>Ctrl or Cmd+Z</td><td>Undo the last point, else the last shape of the selected item</td></tr>
+      <tr><td>Delete</td><td>Delete the selected shape</td></tr></table>
+    <div class="act"><button class="btn" id="gdTour">Replay the button tour</button> <button class="btn primary" id="gdClose">Close</button></div></div>`;
+  document.body.appendChild(d);
+  const close=()=>{d.remove();document.removeEventListener("keydown",esc)},esc=e=>{if(e.key==="Escape")close()};
+  document.addEventListener("keydown",esc);
+  d.addEventListener("click",e=>{if(e.target===d||e.target.id==="gdClose")close();if(e.target.id==="gdTour"){close();if(window.qdTour)window.qdTour()}});
+  d.querySelector("#gdClose").focus()}
+window.qdGuide=openGuide;
 
 /* --- clean up: leave an area out of colour reading; combine: add several colour lines into one --- */
 const boxesOn=()=>((PROJ&&PROJ.ignore)||{})[V.page+1]||[];
@@ -1870,7 +1919,7 @@ if(IS_POP){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on'
     {sel:"#shareBtn",t:"Share link",b:"Creates a private download link for the client, with an expiry. They need no account."},
     {sel:"#exportBtn",t:"Export workbook",b:"Downloads the takeoff with live formulas. To use a client's own Excel instead, use Fill template."},
     {sel:"#nameBtn",t:"Your name",b:"Set the name your teammates see on projects and shared links, instead of your email."},
-    {sel:"#helpBtn",t:"Need this again?",b:"Press this ? button any time to replay the tour."}
+    {sel:"#helpBtn",t:"Need this again?",b:"Press this ? button any time for the step-by-step guide, which also replays this tour."}
   ];
   const root=document.getElementById("tour");if(!root)return;
   const spot=root.querySelector(".spot"),tip=root.querySelector(".tip"),q=s=>tip.querySelector(s);
@@ -1905,7 +1954,7 @@ if(IS_POP){document.querySelectorAll('.view').forEach(e=>e.classList.toggle('on'
   tip.querySelector(".tskip").onclick=end;
   addEventListener("keydown",e=>{if(!root.classList.contains("on"))return;if(e.key==="Escape")end();if(e.key==="ArrowRight")tip.querySelector("[data-tnext]").click();if(e.key==="ArrowLeft")tip.querySelector("[data-tback]").click()});
   addEventListener("resize",()=>{if(root.classList.contains("on"))show()});
-  const hb=document.getElementById("helpBtn");if(hb)hb.onclick=start;
+  const hb=document.getElementById("helpBtn");if(hb)hb.onclick=()=>window.qdGuide?window.qdGuide():start();      // the ? button opens the written guide, which offers this tour
   window.qdTour=start;
   if(!IS_POP){let done=false;try{done=localStorage.getItem("qd-guide-seen")==="1"}catch(e){}if(!done)setTimeout(()=>Promise.resolve(window.qdBooted).then(start),900)}
 })();
