@@ -139,8 +139,12 @@ main{min-width:0;display:flex;flex-direction:column}
 @keyframes pulse{50%{opacity:.25;transform:scale(.7)}}
 
 /* ---------- review ---------- */
-.review{display:grid;grid-template-columns:minmax(380px,.74fr) minmax(0,1.26fr);height:calc(100dvh - 58px)}
-.left{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--paper)}
+.review{display:grid;grid-template-columns:var(--planw,minmax(380px,.74fr)) minmax(0,1fr);height:calc(100dvh - 58px)}
+.left{border-right:1px solid var(--line);display:flex;flex-direction:column;min-height:0;background:var(--paper);position:relative}
+.splitter{position:absolute;top:0;right:-5px;width:11px;height:100%;cursor:col-resize;z-index:7;touch-action:none}
+.splitter::after{content:"";position:absolute;left:5px;top:0;bottom:0;width:2px;background:transparent;transition:background .15s}
+.splitter:hover::after,.splitter.on::after,.splitter:focus-visible::after{background:var(--accent)}
+.splitter:focus-visible{outline:none}
 .tabs{display:flex;gap:8px;padding:10px 14px 0;border-bottom:1px solid var(--line);background:var(--surface)}
 .tabs .sheets{display:flex;gap:2px;flex:1;min-width:0;overflow-x:auto;scrollbar-width:thin}
 .tabs button{padding:8px 11px;font-size:12.5px;color:var(--ink-3);border-bottom:2px solid transparent;white-space:nowrap;transition:color .2s}
@@ -193,7 +197,7 @@ tr.l{cursor:pointer;transition:background .15s;animation:rise .45s var(--ease) b
 tr.l:hover td{background:var(--line-2)}
 tr.l.sel td{background:var(--accent-soft)}
 tr.l.sel td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
-.itemleg{position:absolute;right:14px;top:14px;z-index:2;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:500 11.5px var(--mono);color:var(--ink-2);pointer-events:none;max-width:260px;box-shadow:0 1px 2px rgba(24,24,27,.06)}
+.itemleg{position:absolute;right:14px;top:58px;z-index:2;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:500 11.5px var(--mono);color:var(--ink-2);pointer-events:none;max-width:260px;box-shadow:0 1px 2px rgba(24,24,27,.06)}
 .itemleg div{display:flex;gap:7px;align-items:center;padding:2px 0;white-space:nowrap}.itemleg i{width:10px;height:10px;border-radius:3px;flex:none}.itemleg b{margin-left:auto;padding-left:12px;color:var(--ink);font-weight:500}
 .idlg{position:fixed;inset:0;background:rgba(24,24,27,.38);z-index:60;display:flex;align-items:center;justify-content:center}
 .idlg .box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;width:min(420px,calc(100vw - 32px));box-shadow:0 12px 40px rgba(24,24,27,.22)}
@@ -216,8 +220,11 @@ tr.l.sel td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 .detpanel label{display:flex;gap:8px;align-items:center;padding:3px 0;cursor:pointer}.detpanel label b{font-weight:500;color:var(--ink)}.detpanel label span{margin-left:auto;font:500 11.5px var(--mono);white-space:nowrap}
 .detpanel .grp{margin:8px 0 2px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--ink-3)}
 .detpanel .chk{color:#b7791f}.detpanel .act{display:flex;gap:8px;justify-content:flex-end;margin-top:10px}
-.opn{display:flex;gap:6px;align-items:center;flex-wrap:wrap;margin-top:10px;font-size:12px;color:var(--ink-3)}
-.opn input{width:64px;padding:5px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit}
+.opn{margin-top:10px;font-size:12px;color:var(--ink-3)}
+.opn .opl{display:block;margin-bottom:4px;font-weight:500;color:var(--ink-2)}
+.opn .opr{display:flex;gap:6px;align-items:center;flex-wrap:nowrap}
+.opn input{width:56px;min-width:0;padding:5px 6px;border:1px solid var(--line);border-radius:6px;background:var(--bg);color:var(--ink);font:inherit;text-align:center}
+.opn .opr>span{color:var(--ink-3);white-space:nowrap}
 .idlg .sz{display:none}.idlg .sz.on{display:block}
 tr.l.pick td{background:var(--accent-soft)}
 tr.l.pick td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
@@ -256,6 +263,7 @@ td.dm{color:var(--ink-2);font-size:12px}
 .skrow{height:38px;border-bottom:1px solid var(--line-2);position:relative;overflow:hidden}
 
 @media (max-width:1100px){
+  .splitter{display:none}
   .review{grid-template-columns:1fr;height:auto}
   .left{min-height:420px;border-right:0;border-bottom:1px solid var(--line)}
   .right{min-height:70dvh}
@@ -336,7 +344,19 @@ body.pop .popnote{display:block}
 .gate{display:flex;gap:8px;align-items:flex-start;color:var(--ink-2);font-size:12.5px}
 
 /* ---------- measuring tools ---------- */
-.tools2{position:absolute;left:14px;top:14px;display:flex;gap:6px;align-items:center;z-index:3}
+.tools2{position:absolute;left:14px;top:14px;right:14px;display:flex;flex-wrap:wrap;gap:6px;align-items:center;z-index:3;pointer-events:none}
+.tools2>*{pointer-events:auto}
+.tools2 .meas{font-size:11.5px;max-width:300px;padding:5px 9px}
+.mdot{width:9px;height:9px;border-radius:3px;display:inline-block;margin:0 6px 0 3px;flex:none}
+.mname{max-width:150px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:inline-block;vertical-align:bottom}
+.morewrap{position:relative}
+.moremenu{position:absolute;top:calc(100% + 6px);left:0;z-index:9;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:6px;display:flex;flex-direction:column;gap:4px;min-width:190px;box-shadow:0 8px 24px rgba(24,24,27,.16)}
+.moremenu[hidden]{display:none}.moremenu .btn{justify-content:flex-start;width:100%}
+.toasts{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);display:flex;flex-direction:column;gap:8px;z-index:80;width:min(440px,calc(100vw - 28px));pointer-events:none}
+.toast{pointer-events:auto;display:flex;gap:10px;align-items:flex-start;background:var(--ink);color:var(--surface);border-radius:10px;padding:10px 12px;font-size:13px;line-height:1.45;box-shadow:0 8px 28px rgba(24,24,27,.3);animation:tin .18s ease-out}
+.toast.warn{border-left:4px solid var(--accent)}.toast span{flex:1}.toast button{background:none;border:0;color:inherit;opacity:.7;cursor:pointer;font-size:17px;line-height:1;padding:0 2px}.toast button:hover{opacity:1}
+.toast.out{opacity:0;transform:translateY(6px);transition:all .18s}
+@keyframes tin{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
 .tools2 .btn{padding:6px 10px;font-size:12.5px;box-shadow:0 1px 2px rgba(24,24,27,.06)}
 .tools2 .btn.live{background:var(--accent);border-color:var(--accent);color:var(--on-accent)}
 .meas{font:500 12px var(--mono);background:var(--surface);border:1px solid var(--line);border-radius:8px;padding:6px 10px;color:var(--ink-2);max-width:360px}
@@ -597,6 +617,7 @@ body.pop .popnote{display:none}
           <div class="plan" id="plan"></div>
           <div class="queue" id="queue"><h4><span>Not taken off, 3 items</span><button id="qx">Hide</button></h4><ul id="qlist"></ul></div>
           <div class="legend" id="legend"></div>
+          <div class="splitter" id="splitter" role="separator" aria-orientation="vertical" aria-label="Resize the plan" title="Drag to resize the plan. Double-click to reset" tabindex="0"></div>
         </div>
         <div class="right">
           <div class="sum">
@@ -701,11 +722,26 @@ function liveText(){
   const how=l.mt==="count"?"Click each item":(l.mt==="len"?"Click along the run, double-click to finish":"Click corners, double-click to close")+`. Shift: straight line. Alt: free. Type a number then Enter: exact distance. Ctrl+Z undoes`;
   return `Measuring <b>${l.mk}</b> by ${MT_NAME[l.mt]}: <b>${l.mt==="count"?v:v.toFixed(2)} ${u}</b><br>${how}. Esc cancels, Backspace undoes`;
 }
+/* --- messages: a toast that does not block, instead of a pop-up. persist=true keeps it across the reload that follows --- */
+function notify(msg,kind,persist){
+  msg=String(msg);kind=kind||(/could not|couldn't|cannot|can't|failed|blocked|over 4 MB|no valid|nothing could|no scale ratio|no takeoff|give the item|tick something|enter how many|set this sheet|try again/i.test(msg)?"warn":"info");
+  if(persist){try{sessionStorage.setItem("qd-toast",JSON.stringify([msg,kind]))}catch(e){}return}
+  showToast(msg,kind)}
+function showToast(msg,kind){
+  let box=document.getElementById("toasts");
+  if(!box){box=document.createElement("div");box.id="toasts";box.className="toasts";box.setAttribute("aria-live","polite");document.body.appendChild(box)}
+  const t=document.createElement("div");t.className="toast "+kind;t.setAttribute("role",kind==="warn"?"alert":"status");
+  t.innerHTML=`<span>${esc(msg)}</span><button aria-label="Dismiss">&times;</button>`;
+  const kill=()=>{t.classList.add("out");setTimeout(()=>t.remove(),180)};
+  t.querySelector("button").onclick=kill;box.appendChild(t);
+  while(box.children.length>4)box.firstChild.remove();
+  setTimeout(kill,kind==="warn"?9000:6000)}
+
 /* --- takeoff items: a name, what is measured and a colour, like Bluebeam or PlanSwift --- */
 async function renameItem(l){
   const name=prompt("Rename this item",l.ds);if(name===null)return;
-  if(!name.trim()){alert("Give the item a name.");return}
-  try{await itemRequest({rename:{id:l.it,name:name.trim()}});location.reload()}catch(e){alert(e.message)}}
+  if(!name.trim()){notify("Give the item a name.");return}
+  try{await itemRequest({rename:{id:l.it,name:name.trim()}});location.reload()}catch(e){notify(e.message)}}
 const ITEM_COLORS=["#e4572e","#17bebb","#7b2cbf","#f3a712","#2e86ab","#a8c256","#d1495b","#00798c","#8d5a97","#6c757d"];
 const lineHex=el=>{const l=LINES.find(x=>x.el===+el);return l&&l.hex||null};
 async function itemRequest(body){
@@ -746,10 +782,10 @@ function newItemDialog(){
       if(!(v>0)){d.querySelector("#idSize").focus();return}body.size=v}
     try{const j=await itemRequest({add:body});
       try{sessionStorage.setItem("qd-new-item",String(j.items[j.items.length-1].id))}catch(e){}
-      location.reload()}catch(e){alert(e.message)}}
+      location.reload()}catch(e){notify(e.message)}}
 }
 function itemActions(l){
-  const opn=l.calc==="wall"?`<div class="opn">Take off openings: <input id="opN" inputmode="numeric" value="1" aria-label="How many"> &times; <input id="opW" inputmode="decimal" value="0.82" aria-label="Width in metres"> m wide &times; <input id="opH" inputmode="decimal" value="2.04" aria-label="Height in metres"> m high <button class="btn" id="opAdd">Deduct</button></div>`:"";
+  const opn=l.calc==="wall"?`<div class="opn"><span class="opl">Take off openings (doors, windows)</span><div class="opr"><input id="opN" inputmode="numeric" value="1" aria-label="How many" title="How many"><span>&times;</span><input id="opW" inputmode="decimal" value="0.82" aria-label="Width in metres" title="Width in metres"><span>&times;</span><input id="opH" inputmode="decimal" value="2.04" aria-label="Height in metres" title="Height in metres"><span>m</span><button class="btn" id="opAdd">Deduct</button></div></div>`:"";
   return opn+`<div class="itact">${ITEM_COLORS.map(c=>`<i class="sw ${c===l.hex?"on":""}" data-itc="${c}" title="Change colour" style="background:${c}"></i>`).join("")}</div><div class="itact"><button class="btn" id="itRen">Rename</button> <button class="btn" id="itDel">Delete item</button></div>`}
 function renderItemLegend(){
   const pl=$("#plan");if(!pl)return;
@@ -878,7 +914,7 @@ async function pickRoom(pt){
 const polyArea=p=>Math.abs(p.reduce((a,q,i)=>a+q[0]*p[(i+1)%p.length][1]-p[(i+1)%p.length][0]*q[1],0))/2;
 async function runDetect(){
   const ratio=(SCALES[V.page]||{}).ratio;
-  if(!ratio){alert("Set this sheet's scale first (Enter scale), so the detected sizes are right.");return}
+  if(!ratio){notify("Set this sheet's scale first (Enter scale), so the detected sizes are right.");return}
   const b=$("#tDetect");if(b){b.disabled=true;b.textContent="Detecting..."}
   try{
     const r=await fetch(`/api/project/${PID}/detect`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({page:V.page+1,ratio})});
@@ -887,7 +923,7 @@ async function runDetect(){
     DET={page:V.page,ratio,rooms:j.rooms||[],outline:j.outline||null,doors:j.doors||[],
       pick:{rooms:new Set((j.rooms||[]).map((r,i)=>r.status==="match"?i:-1).filter(i=>i>=0)),outline:!!j.outline,doors:(j.doors||[]).length>0}};
     renderDetPanel();drawOverlays();
-  }catch(e){alert(e.message)}
+  }catch(e){notify(e.message)}
   finally{renderTools()}}
 function renderDetPanel(){
   const pl=$("#plan");if(!pl)return;let el=$("#detPanel");
@@ -926,7 +962,7 @@ async function addDetected(){
     plan.push({name:"Building footprint",kind:"area",color:"#f3a712",shapes:[{page:pg,kind:"area",pts:DET.outline.pts}]})}
   if(DET.pick.doors){const by={};DET.doors.forEach(d=>(by[d.width_mm]=by[d.width_mm]||[]).push(d));
     Object.entries(by).forEach(([wd,list],i)=>plan.push({name:"Door "+wd+" mm",kind:"count",color:["#2b6cb0","#7b2cbf","#2e86ab","#8d5a97"][i%4],shapes:list.map(d=>({page:pg,kind:"count",pts:[[d.x,d.y]]}))}))}
-  if(!plan.length){alert("Tick something to add first.");return}
+  if(!plan.length){notify("Tick something to add first.");return}
   const b=$("#detAdd");if(b){b.disabled=true;b.textContent="Adding..."}
   try{
     for(const it of plan){
@@ -934,7 +970,7 @@ async function addDetected(){
       if(!have)await itemRequest({add:{name:it.name,kind:it.kind,color:it.color}})}
     try{sessionStorage.setItem("qd-detected",JSON.stringify(plan))}catch(e){}
     location.reload()
-  }catch(e){alert(e.message);if(b){b.disabled=false;b.textContent="Add to takeoff"}}}
+  }catch(e){notify(e.message);if(b){b.disabled=false;b.textContent="Add to takeoff"}}}
 
 /* --- the step-by-step guide, opened by the ? button --- */
 function openGuide(){
@@ -945,6 +981,7 @@ function openGuide(){
     <h4>1. Start</h4><ol>
       <li>Open a project, or go to <b>Upload</b> and add the plan PDF. To redo a project, press <b>Reset</b>: it clears your measurements, your takeoff items and everything read from the markups. The uploaded plans stay.</li>
       <li>Go to <b>Review</b> (the Takeoff screen) and pick a drawing sheet from the tabs above the plan.</li>
+      <li>Drag the thin divider between the plan and the table to make the plan bigger. Double-click it to reset.</li>
       <li>Check the scale bar. If it shows the right ratio, carry on. If not, use <b>Enter scale</b> or <b>Check with 2 points</b>. A sheet's scale must be set before anything is measured.</li></ol>
     <h4>2a. A clean plan (a PDF exported from CAD)</h4><ol>
       <li>Press <b>Auto-detect</b>. Rooms, the building outline and door swings are drawn on the plan with a checklist.</li>
@@ -991,9 +1028,9 @@ async function cleanRequest(body){
   try{
     const r=await fetch(`/api/project/${PID}/ignore`,{method:"PUT",headers:jsonH,body:JSON.stringify({page:n,...body})});
     if(!r.ok)throw new Error("Could not save the clean-up area");
-    if(!(SCALES[n-1]||{}).ratio){alert("Saved. Set this sheet's scale (Enter scale), then press Read markups so the colours are measured without that area.");location.reload();return}
+    if(!(SCALES[n-1]||{}).ratio){notify("Saved. Set this sheet's scale (Enter scale), then press Read markups so the colours are measured without that area.","info",true);location.reload();return}
     await rereadSheet(n);location.reload();
-  }catch(e){alert(e.message);cancelClean()}
+  }catch(e){notify(e.message);cancelClean()}
 }
 function addCleanBox(){
   const [a,b]=CLEAN.pts,cl=v=>Math.min(1,Math.max(0,v));
@@ -1005,13 +1042,13 @@ async function combinePicked(){
   const keys=[...PICK].map(id=>(LINES.find(x=>x.id===id)||{}).lk).filter(Boolean);
   const r=await fetch(`/api/project/${PID}/merge`,{method:"PUT",headers:jsonH,body:JSON.stringify({keys})});
   let j={};try{j=await r.json()}catch(e){}
-  if(!r.ok){alert(j.error||"Could not combine these lines.");return}
+  if(!r.ok){notify(j.error||"Could not combine these lines.");return}
   location.reload();
 }
 async function splitCombined(){
   const l=curLine();if(!l||!l.mem)return;
   const r=await fetch(`/api/project/${PID}/merge`,{method:"PUT",headers:jsonH,body:JSON.stringify({split:l.lk})});
-  if(r.ok)location.reload();else alert("Could not split this line.");
+  if(r.ok)location.reload();else notify("Could not split this line.");
 }
 function renderTools(){
   const el=$("#tools2");if(!el)return;
@@ -1026,13 +1063,15 @@ function renderTools(){
       +(l&&l.mt==="len"&&GEO[V.page]&&GEO[V.page].segs.length?`<button class="btn ${TOOL.trace?"live":""}" id="tTrace" title="Click a wall to take its whole straight run in one go">Trace wall</button>`:"")
       +(l&&l.mt==="area"&&GEO[V.page]&&GEO[V.page].segs.length?`<button class="btn ${TOOL.room?"live":""}" id="tRoom" title="Click inside a closed room to take its outline">Pick room</button>`:"")
       +`<div class="meas">${liveText()}</div>`
-    :`<button class="btn" id="tMeas" ${dis?"disabled":""} title="${!scaleOk(V.page)?"Confirm this sheet's scale first":"Draw on the plan to set the quantity"}"><svg class="i" viewBox="0 0 16 16"><path d="M2 12l3-3 2 2 5-6M2 14h12"/></svg>Measure ${l?l.mk+" ("+MT_NAME[l.mt]+")":""}</button>`
+    :`<button class="btn" id="tMeas" ${dis?"disabled":""} title="${!scaleOk(V.page)?"Confirm this sheet's scale first":l?"Measure "+esc(l.mk)+" ("+MT_NAME[l.mt]+") on the plan":"Pick a line first"}"><svg class="i" viewBox="0 0 16 16"><path d="M2 12l3-3 2 2 5-6M2 14h12"/></svg>Measure${l?`<i class="mdot" style="background:${esc(l.hex||"var(--accent)")}"></i><span class="mname">${esc(l.it?l.ds:l.mk)}</span>`:""}</button>`
      +(SELS.el!=null?`<button class="btn" id="tDel">Delete shape <span class="kbd">Del</span></button>`:"")
-     +(MEAS[E]&&MEAS[E].length?`<span class="meas">${MEAS[E].length} shape${MEAS[E].length>1?"s":""} on this element${SELS.el==null?". Click a shape to select, drag a corner to adjust":""}</span>`:"")
+     +(MEAS[E]&&MEAS[E].length?`<span class="meas" title="Click a shape on the plan to select it, drag a corner to adjust">${MEAS[E].length} shape${MEAS[E].length>1?"s":""}</span>`:"")
      +(PROJ&&!PROJ.sample&&PID?`<button class="btn" id="tDetect" title="Find rooms, the building outline and door swings from the drawing itself (vector PDFs)">Auto-detect</button>`:"")
      +(PROJ&&!PROJ.sample&&PID?`<button class="btn" id="tNew" title="Add something to measure, with its own colour">+ New item</button>`:"")
-     +(PROJ&&!PROJ.sample&&PID?`<button class="btn" id="tClean" title="Drag out an area to leave out of colour reading, such as a logo or title block"><svg class="i" viewBox="0 0 16 16"><path d="M2.500 2.500h11v11h-11zM5 11l6-6"/></svg>Clean up area</button>`:"")
-     +(boxesOn().length?`<button class="btn" id="tCleanReset" title="Bring back the areas left out on this sheet">Reset clean-up (${boxesOn().length})</button>`:"")
+     +(PROJ&&!PROJ.sample&&PID?`<span class="morewrap"><button class="btn" id="tMore" aria-haspopup="true" aria-expanded="false" title="More tools">More &#9662;</button><div class="moremenu" id="moreMenu" hidden>`
+        +`<button class="btn" id="tClean" title="Drag out an area to leave out of colour reading, such as a logo or title block"><svg class="i" viewBox="0 0 16 16"><path d="M2.500 2.500h11v11h-11zM5 11l6-6"/></svg>Clean up area</button>`
+        +(boxesOn().length?`<button class="btn" id="tCleanReset" title="Bring back the areas left out on this sheet">Reset clean-up (${boxesOn().length})</button>`:"")
+        +`</div></span>`:"")
      +(PICK.size>1?`<button class="btn live" id="tComb">Combine ${PICK.size} lines</button>`:"")
      +(l&&l.mem&&!PICK.size?`<button class="btn" id="tSplit">Split combined line</button>`:"");
   const a=$("#tMeas");if(a)a.onclick=startMeasure;
@@ -1042,6 +1081,7 @@ function renderTools(){
   const tsn=$("#tSnap");if(tsn)tsn.onclick=()=>{SNAP.on=!SNAP.on;renderTools()};
   const ttr=$("#tTrace");if(ttr)ttr.onclick=()=>{TOOL.trace=!TOOL.trace;TOOL.pts=[];renderTools();drawOverlays()};
   const trm=$("#tRoom");if(trm)trm.onclick=()=>{TOOL.room=!TOOL.room;TOOL.trace=false;renderTools()};
+  const tm=$("#tMore"),mm=$("#moreMenu");if(tm&&mm)tm.onclick=e=>{e.stopPropagation();mm.hidden=!mm.hidden;tm.setAttribute("aria-expanded",String(!mm.hidden))};
   const tn=$("#tNew");if(tn)tn.onclick=newItemDialog;
   const td=$("#tDetect");if(td)td.onclick=runDetect;
   const tc=$("#tClean");if(tc)tc.onclick=()=>{CLEAN.on=true;CLEAN.pts=[];renderTools();drawOverlays()};
@@ -1344,13 +1384,13 @@ function renderScale(){
     return true};
   const one=$("#scDet");if(one)one.onclick=async()=>{
     one.disabled=true;one.textContent="Reading...";
-    try{if(await detect(V.page))afterScale();else{alert("No scale ratio found on this sheet. Use Enter scale, or Check with 2 points.");renderScale()}}
-    catch(e){alert(e.message);renderScale()}};
+    try{if(await detect(V.page))afterScale();else{notify("No scale ratio found on this sheet. Use Enter scale, or Check with 2 points.");renderScale()}}
+    catch(e){notify(e.message);renderScale()}};
   const all=$("#scDetAll");if(all)all.onclick=async()=>{
     const todo=SCALES.map((x,i)=>i).filter(i=>SCALES[i].status!=="ok");let got=0,miss=[];
     try{for(const [k,i] of todo.entries()){all.disabled=true;all.textContent=`Sheet ${i+1} (${k+1} of ${todo.length})...`;if(await detect(i))got++;else miss.push(i+1)}}
-    catch(e){alert(e.message)}
-    if(miss.length)alert(`Found a scale on ${got} sheet${got===1?"":"s"}. No ratio found on sheet${miss.length>1?"s":""} ${miss.join(", ")}: use Enter scale or Check with 2 points.`);
+    catch(e){notify(e.message)}
+    if(miss.length)notify(`Found a scale on ${got} sheet${got===1?"":"s"}. No ratio found on sheet${miss.length>1?"s":""} ${miss.join(", ")}: use Enter scale or Check with 2 points.`);
     afterScale()};
   $("#scEnt").onclick=()=>{ENT.on=!ENT.on;ENT.val=sc.ratio?String(sc.ratio):"";CAL.on=false;CAL.pts=[];$("#plan").classList.remove("cal");renderScale();drawOverlays();if(ENT.on){const i=$("#entIn");i&&i.focus()}};
   const ei=$("#entIn");if(ei){ei.oninput=()=>{ENT.val=ei.value;const pos=ei.selectionStart;renderScale();const n=$("#entIn");n.focus();n.setSelectionRange(pos,pos)}}
@@ -1553,10 +1593,10 @@ function renderTemplate(){
     TPL.matches.slice(0,200).map((m,i)=>`<tr class="l mrow" style="--n:${Math.min(i,20)}"><td class="ds">${m.line}</td><td class="arrow">&rarr;</td><td class="rowaddr">${m.sheet} row ${m.row}</td><td style="color:var(--ink-2)">${m.by}</td><td class="r score ${m.score<.75?"lo":""}">${m.score.toFixed(2)}</td><td><span class="stt ${m.score>=.75?"ok":"fl"}"><span class="dot"></span>${m.score>=.75?"Matched":"Check"}</span></td></tr>`).join("")+`</tbody></table>`;
   $("#fillBtn").disabled=none;
 }
-$("#tplPick").onclick=()=>{if(!LINES.length){alert("This project has no takeoff lines yet.");return}$("#tplIn").click()};
+$("#tplPick").onclick=()=>{if(!LINES.length){notify("This project has no takeoff lines yet.");return}$("#tplIn").click()};
 $("#tplIn").onchange=async e=>{
   const f=e.target.files[0];if(!f)return;
-  if(f.size>4*1024*1024){alert("That template is over 4 MB. Remove images or unused sheets and try again.");e.target.value="";return}
+  if(f.size>4*1024*1024){notify("That template is over 4 MB. Remove images or unused sheets and try again.");e.target.value="";return}
   $("#tplCard").innerHTML=`<div class="hint">Reading ${f.name}...</div>`;
   const fd=new FormData();fd.append("template",f);fd.append("lines",JSON.stringify(linesForServer()));
   try{
@@ -1678,7 +1718,7 @@ $("#shMake").onclick=async()=>{
 };
 if(QD_USER&&QD_USER!=="local"){const lo=$("#logoutBtn");lo.hidden=false;lo.title="Sign out "+QD_NAME;
   const nb=$("#nameBtn");nb.hidden=false;nb.onclick=async()=>{const v=prompt("Your name, as your teammates should see it:",QD_NAME===QD_USER?"":QD_NAME);if(v===null)return;
-    try{const r=await fetch("/api/me/name",{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":(document.querySelector('meta[name="csrf-token"]')||{}).content||""},body:JSON.stringify({name:v})});const j=await r.json();if(!r.ok){alert(j.error||"Could not save the name.");return}location.reload()}catch(e){alert("Could not save the name.")}};lo.onclick=async()=>{await fetch("/logout",{method:"POST"});location.href="/login"}}
+    try{const r=await fetch("/api/me/name",{method:"POST",headers:{"Content-Type":"application/json","X-CSRF-Token":(document.querySelector('meta[name="csrf-token"]')||{}).content||""},body:JSON.stringify({name:v})});const j=await r.json();if(!r.ok){notify(j.error||"Could not save the name.");return}location.reload()}catch(e){notify("Could not save the name.")}};lo.onclick=async()=>{await fetch("/logout",{method:"POST"});location.href="/login"}}
 
 /* --- pop-out window: the same page with ?plan=1. Both windows edit one shared document over a BroadcastChannel,
        so you can measure in the pop-out and watch the table update in the main window (and the reverse). --- */
@@ -1707,7 +1747,7 @@ if(BC)BC.onmessage=e=>{
 };
 function openPop(){
   popWin=window.open(location.pathname+"?plan=1&project="+encodeURIComponent(PID)+(DEMO_AI?"&demo_ai=1":""),"quantidawn-plan","popup=yes,width=1280,height=860");
-  if(!popWin){alert("The browser blocked the new window. Allow pop-ups for this page and try again.");return}
+  if(!popWin){notify("The browser blocked the new window. Allow pop-ups for this page and try again.");return}
   $(".left").classList.add("out");
   clearInterval(popTimer);
   popTimer=setInterval(()=>{if(popWin.closed){clearInterval(popTimer);dock()}},600);
@@ -1854,7 +1894,7 @@ $("#resetBtn").onclick=async()=>{
   try{
     const a=await fetch(`/api/project/${PID}/state`,{method:"DELETE"}),b=await fetch(`/api/project/${PID}/read?all=1`,{method:"DELETE"});
     if(!a.ok||!b.ok)throw 0}
-  catch(e){alert("Could not reset everything. Try again.");return}
+  catch(e){notify("Could not reset everything. Try again.");return}
   location.href="?project="+PID};
 $("#demoBtn").onclick=()=>{location.href="?project="+PID+(DEMO_AI?"":"&demo_ai=1")};
 function lsGet(k){try{return localStorage.getItem(k)}catch(e){return null}}
@@ -1988,7 +2028,7 @@ async function readSheets(kind,btn){
     if(ans===null)return;
     if(ans.trim()){
       const picked=[...new Set(ans.split(/[\s,;]+/).map(Number).filter(n=>Number.isInteger(n)&&n>=1&&n<=total))];
-      if(!picked.length){alert(`No valid sheet numbers. Sheets are numbered 1 to ${total}.`);return}
+      if(!picked.length){notify(`No valid sheet numbers. Sheets are numbered 1 to ${total}.`);return}
       sheets=picked;forced=true;
     }
   }
@@ -2004,22 +2044,23 @@ async function readSheets(kind,btn){
       found+=j.found||0;measured+=j.measured||0;if(j.source)sources.add(j.source);if(j.note)notes.push(j.note);
     }
     const skipNote=skipped.length?`Skipped without reading (no coloured markup): sheet${skipped.length>1?"s":""} ${skipped.join(", ")}. To read one anyway, run AI check again and type its number.`:"";
-    if(!found&&!measured){busy(0);const t=skipNote||notes[0]||"Nothing could be read from these sheets.";if(msg())msg().textContent=t;else alert(t);return}
-    if(skipNote)alert(skipNote);
+    if(!found&&!measured){busy(0);const t=skipNote||notes[0]||"Nothing could be read from these sheets.";if(msg())msg().textContent=t;else notify(t);return}
+    if(skipNote)notify(skipNote,"info",true);
     location.reload();
-  }catch(e){busy(0);if(msg())msg().textContent=e.message;else alert(e.message)}
+  }catch(e){busy(0);if(msg())msg().textContent=e.message;else notify(e.message)}
 }
 document.addEventListener("click",e=>{
+  const mm=document.getElementById("moreMenu");if(mm&&!mm.hidden&&!e.target.closest(".morewrap"))mm.hidden=true;
   if(e.target.closest("[data-newitem]"))return newItemDialog();
-  const sw=e.target.closest(".sw[data-itc]");if(sw){const l=curLine();if(l&&l.it)itemRequest({recolor:{id:l.it,color:sw.dataset.itc}}).then(()=>location.reload()).catch(x=>alert(x.message));return}
+  const sw=e.target.closest(".sw[data-itc]");if(sw){const l=curLine();if(l&&l.it)itemRequest({recolor:{id:l.it,color:sw.dataset.itc}}).then(()=>location.reload()).catch(x=>notify(x.message));return}
   if(e.target.id==="opAdd"){
     const l=curLine(),num=id=>parseFloat(String($(id).value).replace(",","."));
     const n=num("#opN"),w=num("#opW"),h=num("#opH");
-    if(!l||!(n>0&&w>0&&h>0)){alert("Enter how many, and each opening's width and height in metres.");return}
+    if(!l||!(n>0&&w>0&&h>0)){notify("Enter how many, and each opening's width and height in metres.");return}
     l.n.O=+(((l.n.O||0)+n*w*h).toFixed(4));l.q=qty(l);l.dm=dmOf(l);l.st="pn";
     renderAll();scheduleSync();return}
   if(e.target.id==="itRen"){const l=curLine();if(l&&l.it)renameItem(l);return}
-  if(e.target.id==="itDel"){const l=curLine();if(l&&l.it&&confirm(`Delete the item "${l.ds}" and what was measured for it?`)){delete MEAS[l.el];itemRequest({delete:l.it}).then(()=>location.reload()).catch(x=>alert(x.message))}return}
+  if(e.target.id==="itDel"){const l=curLine();if(l&&l.it&&confirm(`Delete the item "${l.ds}" and what was measured for it?`)){delete MEAS[l.el];itemRequest({delete:l.it}).then(()=>location.reload()).catch(x=>notify(x.message))}return}
   const b=e.target.closest("[data-read],#readBtn");if(b)return readSheets("logic",b);
   if(e.target.closest("#aiBtn"))readSheets("ai");
 });
@@ -2030,8 +2071,27 @@ document.addEventListener("dblclick",async e=>{
   const r=await fetch(`/api/project/${PID}/label`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify({key:td.dataset.lk,label:name.trim()})});
   if(r.ok)location.reload();
 });
+/* --- drag the divider to resize the plan; remembered, double-click or Home resets --- */
+(()=>{
+  const bar=document.getElementById("splitter"),rev=document.querySelector(".review");if(!bar||!rev)return;
+  const KEY="qd-planw",clamp=w=>Math.max(320,Math.min(w,rev.getBoundingClientRect().width-380));
+  const ready=()=>typeof V!=="undefined"&&V.ready&&typeof paint==="function",set=w=>{rev.style.setProperty("--planw",clamp(w)+"px");if(ready())paint()};
+  const reset=()=>{rev.style.removeProperty("--planw");try{localStorage.removeItem(KEY)}catch(e){}if(ready())paint()};
+  try{const w=parseFloat(localStorage.getItem(KEY));if(w>0)set(w)}catch(e){}
+  let drag=false;
+  bar.addEventListener("pointerdown",e=>{drag=true;bar.setPointerCapture(e.pointerId);bar.classList.add("on");e.preventDefault()});
+  bar.addEventListener("pointermove",e=>{if(drag)set(e.clientX-rev.getBoundingClientRect().left)});
+  const end=()=>{if(!drag)return;drag=false;bar.classList.remove("on");try{localStorage.setItem(KEY,String(Math.round(document.querySelector(".left").getBoundingClientRect().width)))}catch(e){}};
+  bar.addEventListener("pointerup",end);bar.addEventListener("pointercancel",end);
+  bar.addEventListener("dblclick",reset);
+  bar.addEventListener("keydown",e=>{const w=document.querySelector(".left").getBoundingClientRect().width;
+    if(e.key==="ArrowLeft"){e.preventDefault();set(w-24)}else if(e.key==="ArrowRight"){e.preventDefault();set(w+24)}else if(e.key==="Home"){e.preventDefault();reset()}
+    else return;try{localStorage.setItem(KEY,String(Math.round(document.querySelector(".left").getBoundingClientRect().width)))}catch(x){}});
+})();
+
 window.qdBooted=boot();
 window.qdBooted.then(()=>{
+  try{const t=JSON.parse(sessionStorage.getItem("qd-toast")||"null");sessionStorage.removeItem("qd-toast");if(t)showToast(t[0],t[1])}catch(e){}
   let det=null;try{det=JSON.parse(sessionStorage.getItem("qd-detected")||"null");sessionStorage.removeItem("qd-detected")}catch(e){}
   if(det){let last=null;det.forEach(it=>{const l=LINES.find(x=>x.it&&x.ds===it.name&&x.mt===({area:"area",len:"len",count:"count"}[it.kind]));if(!l)return;
       const cur=MEAS[l.el]=MEAS[l.el]||[],same=(a,b)=>a.page===b.page&&a.kind===b.kind&&Math.abs(a.pts[0][0]-b.pts[0][0])<.5&&Math.abs(a.pts[0][1]-b.pts[0][1])<.5;
