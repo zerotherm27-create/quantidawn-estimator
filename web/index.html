@@ -197,8 +197,12 @@ tr.l{cursor:pointer;transition:background .15s;animation:rise .45s var(--ease) b
 tr.l:hover td{background:var(--line-2)}
 tr.l.sel td{background:var(--accent-soft)}
 tr.l.sel td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
-.itemleg{position:absolute;right:14px;top:58px;z-index:2;background:var(--surface);border:1px solid var(--line);border-radius:10px;padding:8px 10px;font:500 11.5px var(--mono);color:var(--ink-2);pointer-events:none;max-width:260px;box-shadow:0 1px 2px rgba(24,24,27,.06)}
-.itemleg div{display:flex;gap:7px;align-items:center;padding:2px 0;white-space:nowrap}.itemleg i{width:10px;height:10px;border-radius:3px;flex:none}.itemleg b{margin-left:auto;padding-left:12px;color:var(--ink);font-weight:500}
+.itemleg{position:absolute;right:0;top:44px;max-height:calc(100% - 76px);z-index:2;display:flex;flex-direction:column;width:max-content;max-width:300px;background:var(--surface);border:1px solid var(--line);border-right:0;border-radius:10px 0 0 10px;font:500 11px var(--mono);color:var(--ink-2);box-shadow:0 1px 6px rgba(24,24,27,.12)}
+.itemleg h5{margin:0;padding:6px 10px;font:600 11px var(--mono);color:var(--ink);cursor:pointer;display:flex;justify-content:space-between;gap:10px;border-bottom:1px solid var(--line)}
+.itemleg .rows{overflow-y:auto;padding:4px 10px 8px}.itemleg.min .rows{display:none}.itemleg.min h5{border-bottom:0}
+.itemleg .rows div{display:flex;gap:7px;align-items:center;padding:2px 0;white-space:nowrap}
+.itemleg i{flex:none;display:inline-block;width:12px;height:12px;border-radius:50%;opacity:.9}.itemleg i.k-len{height:4px;width:14px;border-radius:2px}.itemleg i.k-area{border-radius:2px;opacity:.65}
+.itemleg b{margin-left:auto;padding-left:12px;color:var(--ink);font-weight:600}
 .idlg{position:fixed;inset:0;background:rgba(24,24,27,.38);z-index:60;display:flex;align-items:center;justify-content:center}
 .idlg .box{background:var(--surface);border:1px solid var(--line);border-radius:14px;padding:20px 22px;width:min(420px,calc(100vw - 32px));box-shadow:0 12px 40px rgba(24,24,27,.22)}
 .idlg h3{margin:0 0 12px;font-size:16px}.idlg label{display:block;font-size:12px;color:var(--ink-3);margin:10px 0 4px}
@@ -742,7 +746,7 @@ async function renameItem(l){
   const name=prompt("Rename this item",l.ds);if(name===null)return;
   if(!name.trim()){notify("Give the item a name.");return}
   try{await itemRequest({rename:{id:l.it,name:name.trim()}});location.reload()}catch(e){notify(e.message)}}
-const ITEM_COLORS=["#e4572e","#17bebb","#7b2cbf","#f3a712","#2e86ab","#a8c256","#d1495b","#00798c","#8d5a97","#6c757d"];
+const ITEM_COLORS=["#e6194b","#3cb44b","#4363d8","#f58231","#911eb4","#17bebb","#f032e6","#bcbd22","#469990","#9a6324"];      // bold and easy to tell apart, like an estimator's markup
 const lineHex=el=>{const l=LINES.find(x=>x.el===+el);return l&&l.hex||null};
 async function itemRequest(body){
   const r=await fetch(`/api/project/${PID}/items`,{method:"PUT",headers:{"Content-Type":"application/json"},body:JSON.stringify(body)});
@@ -787,13 +791,19 @@ function newItemDialog(){
 function itemActions(l){
   const opn=l.calc==="wall"?`<div class="opn"><span class="opl">Take off openings (doors, windows)</span><div class="opr"><input id="opN" inputmode="numeric" value="1" aria-label="How many" title="How many"><span>&times;</span><input id="opW" inputmode="decimal" value="0.82" aria-label="Width in metres" title="Width in metres"><span>&times;</span><input id="opH" inputmode="decimal" value="2.04" aria-label="Height in metres" title="Height in metres"><span>m</span><button class="btn" id="opAdd">Deduct</button></div></div>`:"";
   return opn+`<div class="itact">${ITEM_COLORS.map(c=>`<i class="sw ${c===l.hex?"on":""}" data-itc="${c}" title="Change colour" style="background:${c}"></i>`).join("")}</div><div class="itact"><button class="btn" id="itRen">Rename</button> <button class="btn" id="itDel">Delete item</button></div>`}
-function renderItemLegend(){
+let LEGMIN=false;
+function renderItemLegend(){          // the estimator's legend column: a swatch in the item's colour (dot, line or square by kind), its name, its quantity
   const pl=$("#plan");if(!pl)return;
   let el=$("#itemLeg");
   const its=LINES.filter(l=>l.it);
   if(!its.length){if(el)el.remove();return}
-  if(!el){el=document.createElement("div");el.id="itemLeg";el.className="itemleg";pl.appendChild(el)}
-  el.innerHTML=its.map(l=>`<div><i style="background:${esc(l.hex)}"></i>${esc(l.ds)}<b>${fmt(l.q)} ${l.u}</b></div>`).join("")}
+  if(!el){el=document.createElement("div");el.id="itemLeg";el.className="itemleg";pl.appendChild(el);
+    ["pointerdown","wheel","dblclick"].forEach(t=>el.addEventListener(t,e=>e.stopPropagation()));      // the plan pans and zooms on these; the legend scrolls and collapses instead
+    el.addEventListener("click",e=>{if(e.target.closest("h5")){LEGMIN=!LEGMIN;renderItemLegend()}})}
+  el.classList.toggle("min",LEGMIN);
+  const num=l=>l.u==="each"?String(Math.round(l.q)):(+l.q).toFixed(3);
+  el.innerHTML=`<h5 title="Click to collapse or open"><span>Legend (${its.length})</span><span>${LEGMIN?"+":"&ndash;"}</span></h5><div class="rows">`
+    +its.map(l=>`<div><i class="k-${l.mt==="len"||l.mt==="area"?l.mt:"count"}" style="background:${esc(l.hex)}"></i>${esc(l.ds)}<b>${num(l)} ${esc(l.u)}</b></div>`).join("")+`</div>`}
 
 /* --- snapping to the sheet's own line work (a vector PDF), and picking a room --- */
 function buildGeo(segs){
@@ -1474,11 +1484,11 @@ function drawOverlays(){
   const col=id=>id===curEl()?"var(--accent)":"var(--ink-2)";
   Object.entries(MEAS).forEach(([id,list])=>list.forEach((sh,si)=>{if(sh.page!==V.page)return;
     const isSel=SELS.el===+id&&SELS.idx===si;
-    const c=lineHex(id)||(isSel?"var(--accent)":col(+id)),w=((isSel?3.4:2)/V.k).toFixed(2),pts=sh.pts.map(q=>q.join(",")).join(" "),a=sh.pts[0],k=(12/V.k).toFixed(2);
-    const lbl=sh.kind==="count"?"":`<text class="lbl" x="${sh.pts[Math.floor(sh.pts.length/2)][0]+4}" y="${sh.pts[Math.floor(sh.pts.length/2)][1]-4}" font-size="${k}" font-family="Geist Mono,monospace" fill="${c}" stroke="#fff" stroke-width="${(3/V.k).toFixed(2)}" paint-order="stroke">${shapeValue(sh).toFixed(2)} ${sh.kind==="len"?"m":"m2"}</text>`;
-    if(sh.kind==="area")h+=`<polygon class="src" points="${pts}" fill="${c}" fill-opacity=".16" stroke="${c}" stroke-width="${w}"/>`;
-    else if(sh.kind==="len")h+=`<polyline class="src" points="${pts}" fill="none" stroke="${c}" stroke-width="${w}" stroke-linejoin="round"/>`;
-    else h+=`<circle class="pt" cx="${a[0]}" cy="${a[1]}" r="${(6/V.k).toFixed(2)}" fill="${c}" fill-opacity=".85" stroke="#fff" stroke-width="${w}"/>`;
+    const c=lineHex(id)||(isSel?"var(--accent)":col(+id)),w=Math.max(isSel?4.6:3.2,(isSel?4:2.6)/V.k).toFixed(2),pts=sh.pts.map(q=>q.join(",")).join(" "),a=sh.pts[0],k=(12/V.k).toFixed(2);
+    const lbl=sh.kind==="count"?"":`<text class="lbl" x="${sh.pts[Math.floor(sh.pts.length/2)][0]+4}" y="${sh.pts[Math.floor(sh.pts.length/2)][1]-4}" font-size="${k}" font-family="Geist Mono,monospace" fill="#d00" font-weight="700" stroke="#fff" stroke-width="${(3/V.k).toFixed(2)}" paint-order="stroke">${shapeValue(sh).toFixed(3)} ${sh.kind==="len"?"M":"M2"}</text>`;
+    if(sh.kind==="area")h+=`<polygon class="src" points="${pts}" fill="${c}" fill-opacity=".30" stroke="${c}" stroke-opacity=".9" stroke-width="${w}"/>`;
+    else if(sh.kind==="len")h+=`<polyline class="src" points="${pts}" fill="none" stroke="${c}" stroke-opacity=".9" stroke-width="${w}" stroke-linejoin="round" stroke-linecap="round"/>`;
+    else h+=`<circle class="pt" cx="${a[0]}" cy="${a[1]}" r="${Math.max(PAGE_W/105,5/V.k).toFixed(2)}" fill="${c}" fill-opacity=".42" stroke="${c}" stroke-opacity=".9" stroke-width="${(1.2/V.k).toFixed(2)}"/>`;
     h+=lbl;
   }));
   if(!TOOL.on&&!CAL.on)(MEAS[curEl()]||[]).forEach(sh=>{if(sh.page===V.page&&sh.kind!=="count")sh.pts.forEach(q=>h+=`<circle class="pt h" cx="${q[0]}" cy="${q[1]}" r="${(5/V.k).toFixed(2)}" fill="var(--surface)" stroke="var(--accent)" stroke-width="${(2/V.k).toFixed(2)}"/>`)});
@@ -1810,12 +1820,13 @@ $("#pdfBtn").onclick=async()=>{
   const b=$("#pdfBtn"),o=b.textContent,msg=t=>{b.textContent=t;setTimeout(()=>b.textContent=o,2200)};
   const shapes=[];
   Object.entries(MEAS).forEach(([id,list])=>{const l=LINES.find(x=>x.el===+id);
-    list.forEach(sh=>{const v=shapeValue(sh),u=sh.kind==="len"?" m":sh.kind==="area"?" m2":"";
-      shapes.push({page:sh.page,kind:sh.kind,pts:sh.pts,label:l?l.mk:"",color:l&&l.hex||"",text:sh.kind==="count"?"":v.toFixed(2)+u})})});
+    list.forEach(sh=>{const v=shapeValue(sh),u=sh.kind==="len"?" M":sh.kind==="area"?" M2":"";
+      shapes.push({page:sh.page,kind:sh.kind,pts:sh.pts,label:l?l.mk:"",color:l&&l.hex||"",text:sh.kind==="count"?"":v.toFixed(3)+u})})});
+  const legend=LINES.filter(l=>l.it).map(l=>({label:l.mk,name:l.ds,color:l.hex||"",kind:l.mt==="len"||l.mt==="area"?l.mt:"count",qty:(l.u==="each"?String(Math.round(l.q)):(+l.q).toFixed(3))+" "+l.u}));
   if(!shapes.length){msg("Measure something first");return}
   b.disabled=true;b.textContent="Building...";
   try{
-    const r=await fetch(`/api/project/${PID}/markup-pdf`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({shapes})});
+    const r=await fetch(`/api/project/${PID}/markup-pdf`,{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({shapes,legend})});
     const j=await r.json().catch(()=>({}));
     if(!r.ok)throw new Error(j.error||"Could not build the PDF");
     const a=document.createElement("a");a.href=j.url;a.download=j.name||"marked-up.pdf";document.body.appendChild(a);a.click();a.remove();msg("Downloaded");
