@@ -493,6 +493,8 @@ def merge_markups(pid):
     return jsonify(ok=True)
 
 
+ITEM_PALETTE = ["#e6194b", "#3cb44b", "#4363d8", "#f58231", "#911eb4", "#17bebb", "#f032e6", "#bcbd22", "#469990", "#9a6324",
+                "#800000", "#000075", "#808000", "#e377c2", "#7f7f7f", "#2e86ab"]       # bold, easy to tell apart; used when an item is made without a colour
 ITEM_KINDS = ("len", "area", "count", "wall", "vol")      # wall: length x height minus openings (m2); vol: area x depth (m3)
 CLEAN_PLAN_SEGS = 300       # a flattened marked-up sheet is a picture (no vector lines); an architect's clean plan has thousands
 
@@ -513,7 +515,10 @@ def takeoff_items(pid):
     if "add" in body:
         a = body["add"] if isinstance(body["add"], dict) else {}
         name = clean_label(a.get("name"), 40) if str(a.get("name") or "").strip() else ""        # clean_label turns an empty name into "plan"
-        kind, color = a.get("kind"), str(a.get("color", ""))
+        kind, color = a.get("kind"), str(a.get("color") or "")
+        if not color:                                          # no colour given: the first palette colour no item uses yet
+            taken = {str(i.get("color", "")).lower() for i in items}
+            color = next((c for c in ITEM_PALETTE if c not in taken), ITEM_PALETTE[len(items) % len(ITEM_PALETTE)])
         if not name or kind not in ITEM_KINDS or not re.match(r"^#[0-9a-fA-F]{6}$", color) or len(items) >= 60:
             abort(400)
         item = {"id": max([i["id"] for i in items] + [0]) + 1, "name": name, "kind": kind, "color": color.lower()}
@@ -723,7 +728,8 @@ def markup_pdf_export(pid):
     if not shapes:
         return jsonify(error="There are no measured shapes to put on the drawing yet."), 400
     sources = [page_source(pid, n) for n in range(1, len(p["pages"]) + 1)]
-    data = markup_pdf.build(sources, shapes, f"{p['name']}: measured in QuantiDawn Estimator, {time.strftime('%d %b %Y')}")
+    legend = markup_pdf.clean_legend(body.get("legend"))
+    data = markup_pdf.build(sources, shapes, f"{p['name']}: measured in QuantiDawn Estimator, {time.strftime('%d %b %Y')}", legend)
     get_store().put(markup_key(pid), data, "application/pdf")
     return jsonify(url=f"/api/project/{pid}/markup-pdf?v={int(time.time())}", name=f"{secure_filename(p['name']) or pid}-marked-up.pdf")
 
