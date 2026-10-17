@@ -71,3 +71,22 @@ r = c.put(f"/api/project/{pid}/items", json={"add": {"name": "E", "kind": "len",
 assert [l["hex"] for l in c.get(f"/api/project/{pid}").json["lines"] if l.get("it")][-1] == "#123456"
 assert c.put(f"/api/project/{pid}/items", json={"add": {"name": "F", "kind": "len", "color": "not-a-colour"}}).status_code == 400
 print("item colours: ok", cols)
+
+
+# 5. the legend keeps off text: with the top right full of writing it goes to a quieter corner, and with a quiet sheet it stays top right
+busy = fitz.open()
+pg = busy.new_page(width=A3.width, height=A3.height)
+for i in range(60):
+    pg.insert_text((A3.width - 200, 20 + i * 8), "construction notes line %d of the busy corner" % i, fontsize=6)
+bsrc = Path(tempfile.mkdtemp()) / "busy.pdf"
+bsrc.write_bytes(busy.tobytes())
+one = markup_pdf.clean_shapes([{"kind": "count", "page": 0, "pts": [[300, 400]], "label": "DOOR", "color": "#7b2cbf"}])
+out = fitz.open(stream=markup_pdf.build([(bsrc, 0)], one, "", legend), filetype="pdf")
+hit = out[0].search_for("Door 870 mm")
+assert hit and hit[0].x0 < A3.width - 220, hit               # not in the busy top-right corner
+quiet = Path(tempfile.mkdtemp()) / "q.pdf"
+quiet.write_bytes(plain_pdf())
+out = fitz.open(stream=markup_pdf.build([(quiet, 0)], one, "", legend), filetype="pdf")
+hit = out[0].search_for("Door 870 mm")
+assert hit and hit[0].x0 > A3.width / 2 and hit[0].y0 < 60, hit   # a quiet sheet keeps it top right
+print("legend placement: ok")

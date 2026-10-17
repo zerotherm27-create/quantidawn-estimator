@@ -107,6 +107,26 @@ def _draw(page, s):
         bg.commit()
 
 
+def _quietest_corner(page, W, H, bw, bh):
+    """Top-left of a bw x bh box, in what the reader sees, at the spot on the sheet with the least text and line work under it.
+    A grid of spots is tried; the top right wins ties, because that is where an estimator puts the legend."""
+    m = page.derotation_matrix
+    words = [fitz.Rect(w[:4]) for w in page.get_text("words")]
+    lines = [d["rect"] for d in page.get_drawings() if d.get("rect") is not None and d["rect"].width < W * 0.6 and d["rect"].height < H * 0.6]
+    if len(lines) > 8000:
+        lines = lines[::len(lines) // 8000 + 1]              # a sample is enough to tell busy from quiet
+    xs = [8 + (W - bw - 16) * i / 7 for i in range(7, -1, -1)]       # right to left
+    ys = [8 + (H - bh - 42) * j / 7 for j in range(8)]               # top to bottom, keeping clear of the footer
+    best = None
+    for yi, y in enumerate(ys):
+        for xi, x in enumerate(xs):
+            box = fitz.Rect(x, y, x + bw, y + bh) * m          # the box in the page's own coordinates, where the words and lines are reported
+            score = sum(1 for r in words if r.intersects(box)) * 4 + sum(1 for r in lines if r.intersects(box)) + 0.01 * (xi + yi)
+            if best is None or score < best[0]:
+                best = (score, x, y)
+    return best[1], best[2]
+
+
 def _legend(page, rows):
     """A column (or a few) in the top right of the sheet: a swatch in the item's colour, its name, and its quantity."""
     size, rh, pad, sw = 6.8, 9.6, 5.0, 9.0
@@ -119,8 +139,9 @@ def _legend(page, rows):
                 fitz.get_text_length(e["qty"], fontname="hebo", fontsize=size) + 14 for e in c)
         widths.append(sw + 5 + w)
     total = sum(widths) + pad * (len(cols) + 1)
-    x0, y0 = W - total - 8, 8
-    y1 = y0 + 2 * pad + rh * min(per_col, len(rows))
+    bw, bh = total, 2 * pad + rh * min(per_col, len(rows))
+    x0, y0 = _quietest_corner(page, W, H, bw, bh)
+    y1 = y0 + bh
     bg = page.new_shape()
     _box(bg, page, x0, y0, W - 8, y1)
     bg.finish(color=(0.55, 0.55, 0.55), fill=(1, 1, 1), fill_opacity=0.94, width=0.6)
