@@ -210,6 +210,13 @@ tr.l.sel td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 .idlg .seg{display:flex;gap:6px;flex-wrap:wrap}.idlg .seg button{flex:1 1 28%;padding:8px 6px;border:1px solid var(--line);border-radius:8px;background:var(--bg);color:var(--ink-2);cursor:pointer;font:inherit;font-size:12.5px}
 .idlg .seg button.on{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
 .idlg .act{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
+.idlg .box.wide{width:min(580px,calc(100vw - 32px))}
+.tpl{display:flex;flex-direction:column;gap:6px;max-height:40vh;overflow:auto;margin:10px 0 2px}
+.tpl .row{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.tpl .row .grow{flex:1;min-width:0}.tpl .row b{font-weight:600;color:var(--ink);font-size:13px}
+.tpl .row small{display:block;color:var(--ink-3);font-size:11.5px;margin-top:2px;line-height:1.4;white-space:normal}
+.tpl .row .x{background:none;border:0;color:var(--ink-3);cursor:pointer;font:inherit;font-size:12px;padding:4px 6px}.tpl .row .x:hover{color:var(--ink)}
+.idlg .savebar{display:flex;gap:8px}.idlg .savebar input{flex:1}
 .sw{display:inline-block;width:20px;height:20px;border-radius:6px;margin:2px 4px 2px 0;cursor:pointer;border:2px solid transparent;vertical-align:middle}.sw.on{border-color:var(--ink)}
 .itact{margin-top:8px}
 .idlg .box.guide{width:min(680px,calc(100vw - 32px));max-height:calc(100vh - 48px);overflow:auto;padding:22px 26px}
@@ -766,7 +773,7 @@ function newItemDialog(){
       d.querySelector("#idSizeLbl").textContent=kind==="wall"?"Wall height (m)":"Depth or thickness (m)"}
     d.querySelectorAll(".sw").forEach(b=>b.classList.toggle("on",b.dataset.c===color))};
   d.innerHTML=`<div class="box" role="dialog" aria-label="New takeoff item"><h3>New takeoff item</h3>
-    <label for="idName">What are you measuring?</label><input type="text" id="idName" maxlength="40" placeholder="External wall, slab, power points..." autocomplete="off">
+    <label for="idName">What are you measuring?</label><input type="text" id="idName" maxlength="120" placeholder="External wall, slab, power points..." autocomplete="off">
     <label>Measured as</label><div class="seg"><button data-k="len">Length (m)</button><button data-k="area">Area (m&sup2;)</button><button data-k="count">Count (each)</button><button data-k="wall" title="Measure along the wall; the app multiplies by its height and takes off openings">Wall area (m&sup2;)</button><button data-k="vol" title="Measure the area; the app multiplies by its depth">Volume (m&sup3;)</button></div>
     <div class="sz" id="idSz"><label for="idSize" id="idSizeLbl">Wall height (m)</label><input type="text" id="idSize" inputmode="decimal" value="2.4"></div>
     <label>Colour on the plan</label><div>${ITEM_COLORS.map(c=>`<i class="sw" data-c="${c}" style="background:${c}"></i>`).join("")}</div>
@@ -788,6 +795,39 @@ function newItemDialog(){
       try{sessionStorage.setItem("qd-new-item",String(j.items[j.items.length-1].id))}catch(e){}
       location.reload()}catch(e){notify(e.message)}}
 }
+async function libRequest(url,method,body){          // a small JSON call for the template routes; a refused request becomes an error with the server's own message
+  const r=await fetch(url,{method,headers:{"Content-Type":"application/json"},body:body===undefined?undefined:JSON.stringify(body)});
+  let j={};try{j=await r.json()}catch(e){}
+  if(!r.ok)throw new Error(j.error||"That did not work. Try again.");
+  return j}
+async function templatesDialog(){      // load a ready-made list of items in one go, or keep this project's items as a template for the team
+  if(document.querySelector(".idlg"))return;
+  const d=document.createElement("div");d.className="idlg";
+  d.innerHTML=`<div class="box wide" role="dialog" aria-label="Item templates"><h3>Item templates</h3>
+    <div class="note">A template is a ready-made list of items: their names, how each is measured and a colour. Load one to start a job with them instead of adding items one at a time. Items you already have are left alone.</div>
+    <div class="tpl" id="tplList"><div class="note">Loading...</div></div>
+    <label for="tpName">Save this project's items as a template for the whole team</label>
+    <div class="savebar"><input type="text" id="tpName" maxlength="60" placeholder="Template name" autocomplete="off"><button class="btn" id="tpSave">Save</button></div>
+    <div class="act"><button class="btn" id="tpClose">Close</button></div></div>`;
+  document.body.appendChild(d);
+  const close=()=>d.remove(),list=d.querySelector("#tplList");
+  async function refresh(){
+    try{const t=await libRequest("/api/library","GET");
+      list.innerHTML=t.length?t.map(x=>`<div class="row"><div class="grow"><b>${esc(x.name)}</b><small>${x.count} items${x.builtin?" &middot; bundled":x.by?" &middot; saved by "+esc(x.by):""}${x.description?"<br>"+esc(x.description):""}</small></div><button class="btn primary" data-load="${esc(x.id)}">Load</button>${x.builtin?"":`<button class="x" data-del="${esc(x.id)}" aria-label="Delete ${esc(x.name)}">Delete</button>`}</div>`).join(""):`<div class="note">No templates yet.</div>`
+    }catch(e){list.innerHTML=`<div class="note">${esc(e.message)}</div>`}}
+  d.addEventListener("click",async e=>{
+    if(e.target===d||e.target.id==="tpClose")return close();
+    const ld=e.target.closest("[data-load]"),dl=e.target.closest("[data-del]");
+    if(ld){ld.disabled=true;ld.textContent="Loading...";
+      try{const j=await libRequest(`/api/project/${PID}/items/template`,"POST",{template:ld.dataset.load});
+        notify(`Added ${j.added} item${j.added===1?"":"s"}${j.skipped?` (${j.skipped} already there)`:""}${j.cut_off?`. ${j.cut_off} did not fit: a project holds at most 400 items`:""}.`,"info",true);location.reload()}
+      catch(err){notify(err.message);ld.disabled=false;ld.textContent="Load"}return}
+    if(dl){if(!confirm("Delete this template for everyone on the team? Projects that already loaded it keep their items."))return;
+      try{await libRequest(`/api/library/${dl.dataset.del}`,"DELETE");refresh()}catch(err){notify(err.message)}return}
+    if(e.target.id==="tpSave"){const nm=d.querySelector("#tpName").value.trim();if(!nm){d.querySelector("#tpName").focus();return}
+      try{const j=await libRequest(`/api/project/${PID}/items/save-template`,"POST",{name:nm});d.querySelector("#tpName").value="";notify(`Saved ${j.count} item${j.count===1?"":"s"} as a template called "${nm}".`);refresh()}catch(err){notify(err.message)}}});
+  d.addEventListener("keydown",e=>{if(e.key==="Escape")close();if(e.key==="Enter"&&e.target.id==="tpName")d.querySelector("#tpSave").click()});
+  refresh()}
 function itemActions(l){
   const opn=l.calc==="wall"?`<div class="opn"><span class="opl">Take off openings (doors, windows)</span><div class="opr"><input id="opN" inputmode="numeric" value="1" aria-label="How many" title="How many"><span>&times;</span><input id="opW" inputmode="decimal" value="0.82" aria-label="Width in metres" title="Width in metres"><span>&times;</span><input id="opH" inputmode="decimal" value="2.04" aria-label="Height in metres" title="Height in metres"><span>m</span><button class="btn" id="opAdd">Deduct</button></div></div>`:"";
   return opn+`<div class="itact">${ITEM_COLORS.map(c=>`<i class="sw ${c===l.hex?"on":""}" data-itc="${c}" title="Change colour" style="background:${c}"></i>`).join("")}</div><div class="itact"><button class="btn" id="itRen">Rename</button> <button class="btn" id="itDel">Delete item</button></div>`}
@@ -998,6 +1038,7 @@ function openGuide(){
       <li>Untick anything wrong, and check the door count against the plan: swings are not always hinged doors. Press <b>Add to takeoff</b>.</li>
       <li>Rooms it lists as not found are open plan or have wide openings. Add an <b>Area</b> item and use <b>Pick room</b>, or click the corners.</li>
       <li>For walls press <b>+ New item</b> and choose <b>Length</b> or <b>Wall area</b> (give the wall height). Press <b>Trace wall</b> and click each wall, one click per straight run.</li>
+      <li>To start a job from a ready-made list of items (names, how each is measured, colours), open <b>More &#9662; Item templates</b> and press <b>Load</b>. Items you already have are kept. To keep your own list for the next job, type a name there and press <b>Save</b>: it is shared with the whole team.</li>
       <li>In the item's drawer, deduct doors and windows with <b>Take off openings</b>, and edit the height if it changes.</li>
       <li>Use an <b>Area</b> item for slabs, or <b>Volume</b> with a depth.</li></ol>
     <div class="tip2">Auto-detect, Trace wall, Pick room and snapping need a vector PDF. A scan or a flattened picture has no lines to read, so measure those by clicking.</div>
@@ -1079,6 +1120,7 @@ function renderTools(){
      +(PROJ&&!PROJ.sample&&PID?`<button class="btn" id="tDetect" title="Find rooms, the building outline and door swings from the drawing itself (vector PDFs)">Auto-detect</button>`:"")
      +(PROJ&&!PROJ.sample&&PID?`<button class="btn" id="tNew" title="Add something to measure, with its own colour">+ New item</button>`:"")
      +(PROJ&&!PROJ.sample&&PID?`<span class="morewrap"><button class="btn" id="tMore" aria-haspopup="true" aria-expanded="false" title="More tools">More &#9662;</button><div class="moremenu" id="moreMenu" hidden>`
+        +`<button class="btn" id="tTpl" title="Load a ready-made list of items, or save this project's items as a template">Item templates</button>`
         +`<button class="btn" id="tClean" title="Drag out an area to leave out of colour reading, such as a logo or title block"><svg class="i" viewBox="0 0 16 16"><path d="M2.500 2.500h11v11h-11zM5 11l6-6"/></svg>Clean up area</button>`
         +(boxesOn().length?`<button class="btn" id="tCleanReset" title="Bring back the areas left out on this sheet">Reset clean-up (${boxesOn().length})</button>`:"")
         +`</div></span>`:"")
@@ -1093,6 +1135,7 @@ function renderTools(){
   const trm=$("#tRoom");if(trm)trm.onclick=()=>{TOOL.room=!TOOL.room;TOOL.trace=false;renderTools()};
   const tm=$("#tMore"),mm=$("#moreMenu");if(tm&&mm)tm.onclick=e=>{e.stopPropagation();mm.hidden=!mm.hidden;tm.setAttribute("aria-expanded",String(!mm.hidden))};
   const tn=$("#tNew");if(tn)tn.onclick=newItemDialog;
+  const tt=$("#tTpl");if(tt)tt.onclick=()=>{const m=$("#moreMenu");if(m)m.hidden=true;templatesDialog()};
   const td=$("#tDetect");if(td)td.onclick=runDetect;
   const tc=$("#tClean");if(tc)tc.onclick=()=>{CLEAN.on=true;CLEAN.pts=[];renderTools();drawOverlays()};
   const tcc=$("#tCleanCan");if(tcc)tcc.onclick=cancelClean;
@@ -1276,7 +1319,7 @@ function renderTable(){
     });
   });
   if(n===0)h+=LINES.length===0
-    ?`<tr><td colspan="7" style="height:220px;text-align:center;color:var(--ink-2);white-space:normal;padding:0 40px">${PROJ&&PROJ.message?PROJ.message:"No takeoff lines yet."}<br><span style="color:var(--ink-3)">The sheets are loaded on the left. Set each sheet's scale to get ready to measure.</span>${PROJ&&!PROJ.sample&&PROJ.id?`<br><button class="btn primary" style="margin-top:14px" data-newitem>+ New item</button> <button class="btn" style="margin-top:14px" data-read>Read markups</button><div class="note" id="readMsg" style="margin-top:8px;max-width:520px"></div>`:""}</td></tr>`
+    ?`<tr><td colspan="7" style="height:220px;text-align:center;color:var(--ink-2);white-space:normal;padding:0 40px">${PROJ&&PROJ.message?PROJ.message:"No takeoff lines yet."}<br><span style="color:var(--ink-3)">The sheets are loaded on the left. Set each sheet's scale to get ready to measure.</span>${PROJ&&!PROJ.sample&&PROJ.id?`<br><button class="btn primary" style="margin-top:14px" data-newitem>+ New item</button> <button class="btn" style="margin-top:14px" data-tpl>Item templates</button> <button class="btn" style="margin-top:14px" data-read>Read markups</button><div class="note" id="readMsg" style="margin-top:8px;max-width:520px"></div>`:""}</td></tr>`
     :`<tr><td colspan="7" style="height:160px;text-align:center;color:var(--ink-3)">No lines match this filter. <button class="btn" style="margin-left:8px" id="clr">Clear filters</button></td></tr>`;
   $("#tbl").innerHTML=h+"</tbody></table>";
   const c=$("#clr");if(c)c.onclick=()=>{st.filter="all";st.q="";$("#q").value="";renderAll()};
@@ -2078,6 +2121,7 @@ async function readSheets(kind,btn){
 document.addEventListener("click",e=>{
   const mm=document.getElementById("moreMenu");if(mm&&!mm.hidden&&!e.target.closest(".morewrap"))mm.hidden=true;
   if(e.target.closest("[data-newitem]"))return newItemDialog();
+  if(e.target.closest("[data-tpl]"))return templatesDialog();
   const sw=e.target.closest(".sw[data-itc]");if(sw){const l=curLine();if(l&&l.it)itemRequest({recolor:{id:l.it,color:sw.dataset.itc}}).then(()=>location.reload()).catch(x=>notify(x.message));return}
   if(e.target.id==="opAdd"){
     const l=curLine(),num=id=>parseFloat(String($(id).value).replace(",","."));

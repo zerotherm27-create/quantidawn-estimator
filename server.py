@@ -24,7 +24,8 @@ from werkzeug.middleware.proxy_fix import ProxyFix
 from werkzeug.utils import secure_filename
 
 from core import auth, shares
-from core import detect, geometry, logic_reader, markup_pdf, reader
+from core import detect, geometry, item_library, logic_reader, markup_pdf, reader
+from core.item_library import ITEM_KINDS, ITEM_PALETTE
 from core.dupes import find_duplicates
 from core.price_matcher import load_price_list, price_lines
 from core.project import DATA, ROOT, SAMPLES, _scale_json, apply_entries, demo_ai, from_json, native_z, render_pages, sample_project
@@ -493,9 +494,6 @@ def merge_markups(pid):
     return jsonify(ok=True)
 
 
-ITEM_PALETTE = ["#e6194b", "#3cb44b", "#4363d8", "#f58231", "#911eb4", "#17bebb", "#f032e6", "#bcbd22", "#469990", "#9a6324",
-                "#800000", "#000075", "#808000", "#e377c2", "#7f7f7f", "#2e86ab"]       # bold, easy to tell apart; used when an item is made without a colour
-ITEM_KINDS = ("len", "area", "count", "wall", "vol")      # wall: length x height minus openings (m2); vol: area x depth (m3)
 CLEAN_PLAN_SEGS = 300       # a flattened marked-up sheet is a picture (no vector lines); an architect's clean plan has thousands
 
 
@@ -514,12 +512,12 @@ def takeoff_items(pid):
     items = st.doc_get("items", pid) or []
     if "add" in body:
         a = body["add"] if isinstance(body["add"], dict) else {}
-        name = clean_label(a.get("name"), 40) if str(a.get("name") or "").strip() else ""        # clean_label turns an empty name into "plan"
+        name = item_library.clean_name(a.get("name"))
         kind, color = a.get("kind"), str(a.get("color") or "")
         if not color:                                          # no colour given: the first palette colour no item uses yet
             taken = {str(i.get("color", "")).lower() for i in items}
             color = next((c for c in ITEM_PALETTE if c not in taken), ITEM_PALETTE[len(items) % len(ITEM_PALETTE)])
-        if not name or kind not in ITEM_KINDS or not re.match(r"^#[0-9a-fA-F]{6}$", color) or len(items) >= 60:
+        if not name or kind not in ITEM_KINDS or not re.match(r"^#[0-9a-fA-F]{6}$", color) or len(items) >= item_library.MAX_ITEMS:
             abort(400)
         item = {"id": max([i["id"] for i in items] + [0]) + 1, "name": name, "kind": kind, "color": color.lower()}
         if kind in ("wall", "vol"):                            # a wall needs its height, a volume its depth
@@ -540,7 +538,7 @@ def takeoff_items(pid):
                 i["color"] = r["color"].lower()
     elif "rename" in body:
         r = body["rename"] if isinstance(body["rename"], dict) else {}
-        name = clean_label(r.get("name"), 40) if str(r.get("name") or "").strip() else ""
+        name = item_library.clean_name(r.get("name"))
         if not name:
             abort(400)
         if not any(i["id"] == r.get("id") for i in items):
@@ -554,6 +552,134 @@ def takeoff_items(pid):
         abort(400)
     st.doc_put("items", pid, items)
     return jsonify(ok=True, items=items)
+
+
+LIBRARY = "library"
+TID_RE = re.compile(r"^[a-z0-9][a-z0-9-]{0,60}$")
+
+
+def _template(tid):
+    """A template by id: the ones bundled with the app first, then the team's saved ones. 404 when there is none."""
+    if not TID_RE.match(tid):
+        abort(404)
+    t = item_library.builtin_templates().get(tid)
+    if t:
+        return t
+    doc = get_store().doc_get(LIBRARY, tid)
+    if not doc:
+        abort(404)
+    return {**doc, "id": tid, "builtin": False}
+
+
+def _new_template_id(name):
+    return "u-" + (re.sub(r"[^a-z0-9]+", "-", name.lower()).strip("-")[:30] or "template") + "-" + secrets.token_hex(2)
+
+
+def _save_template(tid, name, items, description="", source=""):
+    get_store().doc_put(LIBRARY, tid, {"name": name, "description": description[:200], "source": source[:80], "items": items,
+                                      "by": g.user or "", "updated": int(time.time())})
+
+
+@app.get("/api/library")
+def library_list():
+    """Every template the team can load: the bundled ones, then the ones people saved (newest first)."""
+    out = [item_library.summary(t) for t in item_library.builtin_templates().values()]
+    for tid, doc, ts in get_store().doc_list(LIBRARY):
+        out.append(item_library.summary({**doc, "id": tid, "by": auth.display_name(doc.get("by", "")), "updated": doc.get("updated", ts)}))
+    return jsonify(out)
+
+
+@app.get("/api/library/<tid>")
+def library_get(tid):
+    return jsonify(_template(tid))
+
+
+@app.post("/api/library")
+def library_create():
+    body = request.get_json(force=True, silent=True) or {}
+    name = item_library.clean_name(body.get("name"), 60)
+    if not name:
+        return jsonify(error="Give the template a name."), 400
+    try:
+        items = item_library.clean_items(body.get("items"))
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+    tid = _new_template_id(name)
+    _save_template(tid, name, items, str(body.get("description") or ""))
+    return jsonify(ok=True, id=tid, count=len(items))
+
+
+@app.put("/api/library/<tid>")
+def library_update(tid):
+    t = _template(tid)
+    if t.get("builtin"):
+        return jsonify(error="The bundled templates can't be changed. Save a copy under your own name instead."), 400
+    body = request.get_json(force=True, silent=True) or {}
+    name = item_library.clean_name(body.get("name"), 60) if "name" in body else t.get("name", "")
+    if not name:
+        return jsonify(error="Give the template a name."), 400
+    try:
+        items = item_library.clean_items(body["items"]) if "items" in body else t["items"]
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+    _save_template(tid, name, items, str(body.get("description", t.get("description", ""))), t.get("source", ""))
+    return jsonify(ok=True, id=tid, count=len(items))
+
+
+@app.delete("/api/library/<tid>")
+def library_delete(tid):
+    t = _template(tid)
+    if t.get("builtin"):
+        return jsonify(error="The bundled templates can't be deleted."), 400
+    get_store().doc_delete(LIBRARY, tid)
+    return jsonify(ok=True)
+
+
+def _items_project(pid):
+    check_id(pid)
+    if pid in SAMPLES:
+        abort(400, description="The sample projects already have their lines.")
+    if get_store().doc_get("project", pid) is None:
+        abort(404)
+
+
+@app.post("/api/project/<pid>/items/template")
+def load_item_template(pid):
+    """Add a template's items to the project in ONE request (so a failure cannot leave half of them). {template: id} or {items: [...]}.
+    An item the project already has (same name and kind) is skipped, so loading twice adds nothing."""
+    _items_project(pid)
+    body = request.get_json(force=True, silent=True) or {}
+    raw = _template(str(body["template"]))["items"] if body.get("template") else body.get("items")
+    try:
+        wanted = item_library.clean_items(raw)
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+    st = get_store()
+    items, added, skipped, cut = item_library.merge(st.doc_get("items", pid) or [], wanted)
+    if added:
+        st.doc_put("items", pid, items)
+    return jsonify(ok=True, added=added, skipped=skipped, cut_off=cut, items=items)
+
+
+@app.post("/api/project/<pid>/items/save-template")
+def save_items_as_template(pid):
+    """Keep this project's items (names, kinds, colours, heights) as a template the whole team can load."""
+    _items_project(pid)
+    body = request.get_json(force=True, silent=True) or {}
+    name = item_library.clean_name(body.get("name"), 60)
+    if not name:
+        return jsonify(error="Give the template a name."), 400
+    items = get_store().doc_get("items", pid) or []
+    if not items:
+        return jsonify(error="This project has no items to save yet."), 400
+    keep = [{k: i[k] for k in ("name", "kind", "color", "size", "tag") if k in i} for i in items]
+    try:
+        keep = item_library.clean_items(keep)
+    except ValueError as exc:
+        return jsonify(error=str(exc)), 400
+    tid = _new_template_id(name)
+    _save_template(tid, name, keep, str(body.get("description") or ""), source=load_project(pid)["name"])
+    return jsonify(ok=True, id=tid, count=len(keep))
 
 
 def _page_scale(pid, n, pdf_w):

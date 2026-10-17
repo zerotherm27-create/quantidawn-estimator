@@ -1,0 +1,933 @@
+{
+ "name": "Residential house",
+ "description": "The items an estimator measures on a house or duplex: windows, doors, slab, brick, steel, roofing, linings, paint and joinery. Built from the Clinton duplex legend (BC26122).",
+ "source": "22l524sp-clinton",
+ "items": [
+  {
+   "name": "Aluminum Sliding Window/with Mesh - 600-1800 - U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Aluminum Sliding Window/with Mesh - 600-1800 - U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Aluminum Sliding Window/with Mesh - 1200-1800 - U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Aluminum Sliding Window/with Mesh - 1800-1800 U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Aluminum Sliding Window/with Mesh - 1800-1800 U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Aluminum Sliding Window/with Mesh - 1800-900 U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Aluminum Sliding Window/with Mesh - 900-600 Obscured U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Aluminum Sliding Window/with Mesh - 1200-1500 U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Aluminum Sliding Window/with Mesh - 1200-600 Obscured U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Aluminum Sliding Door/Insect-screen doors-2100-4200 U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Aluminum Sliding Window/with Mesh - 1200-1800 U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Aluminum Sliding Window - 900-600 Obscured U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Aluminum Sliding Door/Insect Screen Doors-2100-4200 U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Shower Screen-2100 H U1",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "Shower Screen-2100 H U2",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Panel Lift Door - Auto - 2100-4800 U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Panel Lift Door - Auto - 2100-4800 U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Solid Core Door (entry) - 870 x 2100 U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Solid Core Door (entry) - 870 x 2100 U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Hollow Core Door (internal) - 720 x 2040 x 40mm - U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Hollow Core Door (internal) - 870 x 2040 x 40mm- U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Hollow Core Door (internal) - 820 x 2040 x 40mm - U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Hollow Core Door (internal) - 870 x 2040 x 40mm - U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Vanity Mirror - 900mm H - U1",
+   "kind": "wall",
+   "size": 0.9,
+   "tag": "U1"
+  },
+  {
+   "name": "Vanity Mirror - 900mm H - U2",
+   "kind": "wall",
+   "size": 0.9,
+   "tag": "U2"
+  },
+  {
+   "name": "Aluminum Sliding Door Threshold - U2",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Aluminum Sliding Door Threshold - U1",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "100mm Slab Supply and Pour on top of waffle Pod/EPS Expanded Polystyrence/Vapor Barrier - U1 (SL82 Mesh)-138.14m2",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "100mm Slab Supply and Pour on top of waffle Pod/EPS Expanded Polystyrence/Vapor Barrier - U2 (SL82 Mesh)-130.38m2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "125mm Slab Supply and Pour /EPS Expanded Polystyrence/Vapor Barrier - U1 (SL82 Mesh)-41.14m2",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "125mm Slab Supply and Pour /EPS Expanded Polystyrence/Vapor Barrierr - U2(SL82 Mesh)-36.54m2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "190mm Blockworks - 2550mm H-U2",
+   "kind": "wall",
+   "size": 2.55,
+   "tag": "U2"
+  },
+  {
+   "name": "230Lx110Wmmx76H Brickworks-2550mm H (Less 34.35m2 Openings)-U2",
+   "kind": "wall",
+   "size": 2.55,
+   "tag": "U2"
+  },
+  {
+   "name": "230Lx110Wmmx76H Brickworks-2550mm H (Less 38.11m2 Openings)-U1",
+   "kind": "wall",
+   "size": 2.55,
+   "tag": "U1"
+  },
+  {
+   "name": "Brick Sill - U1",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "Brick Sill - U2",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "McHugh Steel Wall Frame - 2440mm H - (Less 48.96m2 Openings)-U2",
+   "kind": "wall",
+   "size": 2.44,
+   "tag": "U2"
+  },
+  {
+   "name": "McHugh Steel Wall Frame - 2440mm H - (Less 52.72m2 Openings)-U1",
+   "kind": "wall",
+   "size": 2.44,
+   "tag": "U1"
+  },
+  {
+   "name": "12mm Structural Plywood - 2440mm H-U2",
+   "kind": "wall",
+   "size": 2.44,
+   "tag": "U2"
+  },
+  {
+   "name": "12mm Structural Plywood - 2440mm H-U1",
+   "kind": "wall",
+   "size": 2.44,
+   "tag": "U1"
+  },
+  {
+   "name": "Mchugh Post inside Pier - 2700mm H - U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Mchugh Post inside Pier - 2700mm H - U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Muchugh Steel Roof Beam-U2",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Muchugh Steel Roof Beam-U1",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "Muchugh Steel Headers/lintels-U2",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Muchugh Steel Headers/lintels-U1",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "Muchugh Jamb Studs - U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Muchugh Jamb Studs - U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Mchugh Tie-downs @ 600ctrs MAX - U2=190 each",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Mchugh Tie-downs @ 600ctrs MAX - U1=195 each",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Mchugh Beam to Beam Bolts-U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Mchugh Beam to Beam Bolts-U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Dynabolts - U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Post to Shoe Bolts and Washers - U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Dynabolts - U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Post to Shoe Bolts and Washers - U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Heavy Duty Stirrups - U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Heavy Duty Stirrups - U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Crane-U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Crane-U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Cavity Sliding Door - 870 x 2020 - U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "125mm Slab Supply and Pour /EPS Expanded Polystyrence/Vapor Barrier - U1 (SL82 Mesh)-22.74m2 (porch.Patio)",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "125mm Slab Supply and Pour /EPS Expanded Polystyrence/Vapor Barrier - U2 (SL82 Mesh)-15.37m2 (porch.Patio)",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Floor Transition trims - U2",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Floor Transition trims - U1",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "Install Joinery - U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Install Joinery - U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Kitchen Benchtop - 2450 x 600 x 900-U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Kitchen Benchtop - 2400 x 600 x 900-U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Kitchen Pantry-600 x 650 x 2100 -U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Kitchen O/H Cupboard - 2450x 300x 900-U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Kitchen O/H Cupboard - 2400x 300x 900-U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Kitchen Island - 3200 x 900 x 900 - U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Kitchen Island - 3200 x 900 x 900 - U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Fridge Cupboard - 1000 x 650 x 2100-U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Fridge Cupboard - 1000 x 650 x 2100-U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "WIP Shelving - U2",
+   "kind": "area",
+   "tag": "U2"
+  },
+  {
+   "name": "WIP Shelving - U1",
+   "kind": "area",
+   "tag": "U1"
+  },
+  {
+   "name": "Laundry O/H Cupboard - 1600 x 300 x 900-U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Laundry O/H Cupboard - 1050 x 300 x 900-U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Linen Sliders - 1100 x 2400-U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Linen Sliders - 2330 x 2400-U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Linen Sliders - 2260 x 2400-U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Ensuite Vanity Benchtop- 1200 x 450-U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Ensuite Vanity Benchtop- 900 x 450-U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Bath Vanity Benchtop- 900 x 450-U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Bath Vanity Benchtop- 900 x 450-U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "WIR Cupboard - U2",
+   "kind": "area",
+   "tag": "U2"
+  },
+  {
+   "name": "WIR Cupboard - U1",
+   "kind": "area",
+   "tag": "U1"
+  },
+  {
+   "name": "Robe Slider - 1800 x 2100-U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Robe Slider - 1800 x 2100-U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Whitegoods Fixtures - Water Closet - U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Whitegoods Fixtures - 1525 Bath Tub - U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Whitegoods Fixtures - Water Closet - U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Whitegoods Fixtures - 1525 Bath Tub - U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Mchugh Steel Roof Trusses @ 600ctrs MAX (TBC)- U1 - 343m2",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Mchugh Steel Roof Trusses @ 600ctrs MAX (TBC)- U2 - 234m2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Colorbond Corrugated Metal Roof Sheeting-0.42mm BMT- U2 - 234m2-supply and install",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Colorbond Corrugated Metal Roof Sheeting-0.42mm BMT - U1 - 343m2-supply and install",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "90mm Dia Downpipe - U1-3000mm L",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "90mm Dia Downpipe - U2-3000mm L",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Mchugh Ceiling Battens - U1",
+   "kind": "area",
+   "tag": "U1"
+  },
+  {
+   "name": "Mchugh Ceiling Battens - U2",
+   "kind": "area",
+   "tag": "U2"
+  },
+  {
+   "name": "Mchugh Roof Battens @ 700ctrs MAX-U2",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Mchugh Roof Battens @ 700ctrs MAX-U1",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "Roof Cappings/Flashings - U2-supply and install",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Roof Cappings/Flashings - U1-supply and install",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "High Performance R2.5 Foil-Face Roof Blanket- 234m2-supply and install",
+   "kind": "count"
+  },
+  {
+   "name": "High Performance R2.5 Foil-Face Roof Blanket- U1 - 343m2-supply and install",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Valley Board - U2-supply and install",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Valley Board - U1-supply and install",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "Colorbobd Fascia-U2-supply and install",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Colorbobd Fascia-U1-supply and install",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "McHugh Steel Gable Wall Frame - U2",
+   "kind": "area",
+   "tag": "U2"
+  },
+  {
+   "name": "McHugh Steel Gable Wall Frame - U1",
+   "kind": "area",
+   "tag": "U1"
+  },
+  {
+   "name": "Colorbobd Barges-U2-supply and install",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Colorbobd Barges-U1-supply and install",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "Termite Protection-U1",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "Termite Protection-U2",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Slab Edge Formworks - 100mm THICK-U1",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "Slab Edge Formworks - 100mm THICK-U2",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "50mm Slab Edge Formwork - U1",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "50mm Slab Edge Formwork - U2",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Ground Slab Reo - N12 X 4-U2",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Ground Slab Reo - N12 X 4-U1",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "Wall Bracing-TBA Hardwood Ply Brace - 900mm L-U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Wall Bracing-TBA Hardwood Ply Brace - 900mm L-U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "U2 Patio/Porch Floor - Exposed Aggregate",
+   "kind": "area",
+   "tag": "U2"
+  },
+  {
+   "name": "U1 Patio/Porch Floor - Exposed Aggregate",
+   "kind": "area",
+   "tag": "U1"
+  },
+  {
+   "name": "U2 Garage Floor - Exposed Aggregate",
+   "kind": "area",
+   "tag": "U2"
+  },
+  {
+   "name": "U1 Garage Floor - Exposed Aggregate",
+   "kind": "area",
+   "tag": "U1"
+  },
+  {
+   "name": "U2 Bedrooms Floor - Carpet",
+   "kind": "area",
+   "tag": "U2"
+  },
+  {
+   "name": "U1 Bedrooms Floor - Carpet",
+   "kind": "area",
+   "tag": "U1"
+  },
+  {
+   "name": "U2 Living/Kitchen Floor-Tiled",
+   "kind": "area",
+   "tag": "U2"
+  },
+  {
+   "name": "U1 Living/Kitchen Floor-Tiled",
+   "kind": "area",
+   "tag": "U1"
+  },
+  {
+   "name": "U2-Wet Area Floor - Tiles",
+   "kind": "area",
+   "tag": "U2"
+  },
+  {
+   "name": "U1-Wet Area Floor - Tiles",
+   "kind": "area",
+   "tag": "U1"
+  },
+  {
+   "name": "Skirtings - U2",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Skirtings - U1",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "Wall linings - Gyprock Plus 10mm Plasterboard-2440mm H-U1-Supply and Install",
+   "kind": "wall",
+   "size": 2.44,
+   "tag": "U1"
+  },
+  {
+   "name": "Wall linings - Gyprock Plus 10mm Plasterboard-2440mm H-U2-Supply and Install",
+   "kind": "wall",
+   "size": 2.44,
+   "tag": "U2"
+  },
+  {
+   "name": "Wall linings - Gyprock Plus 10mm Plasterboard-340mm H-U1-Supply and Install",
+   "kind": "wall",
+   "size": 0.34,
+   "tag": "U1"
+  },
+  {
+   "name": "Wall linings - Gyprock Plus 10mm Plasterboard-340mm H-U2-Supply and Install",
+   "kind": "wall",
+   "size": 0.34,
+   "tag": "U2"
+  },
+  {
+   "name": "Wall linings - Gyprock Aquachek 10mm-2440mm H-U1-Supply and Install",
+   "kind": "wall",
+   "size": 2.44,
+   "tag": "U1"
+  },
+  {
+   "name": "Wall linings - Gyprock Aquachek 10mm-2440mm H-U2-Supply and Install",
+   "kind": "wall",
+   "size": 2.44,
+   "tag": "U2"
+  },
+  {
+   "name": "Wall-Insulation - 2550mm H-U2-Supply and Install",
+   "kind": "wall",
+   "size": 2.55,
+   "tag": "U2"
+  },
+  {
+   "name": "Wall-Insulation - 2550mm H-U1-Supply and Install",
+   "kind": "wall",
+   "size": 2.55,
+   "tag": "U1"
+  },
+  {
+   "name": "Wall-Insulation - 340mm H-U2-Supply and Install",
+   "kind": "wall",
+   "size": 0.34,
+   "tag": "U2"
+  },
+  {
+   "name": "Wall-Insulation - 340mm H-U1-Supply and Install",
+   "kind": "wall",
+   "size": 0.34,
+   "tag": "U1"
+  },
+  {
+   "name": "Ceiling Linings - Gyprock Plus 10mm Plasterboard-U2-Supply and Install",
+   "kind": "area",
+   "tag": "U2"
+  },
+  {
+   "name": "Ceiling Linings - Gyprock Plus 10mm Plasterboard-U1-Supply and Install",
+   "kind": "area",
+   "tag": "U1"
+  },
+  {
+   "name": "Ceiling Linings - Gyprock Aquachek-10mm -U2-Supply and Install",
+   "kind": "area",
+   "tag": "U2"
+  },
+  {
+   "name": "Ceiling Linings - Gyprock Aquachek-10mm -U1-Supply and Install",
+   "kind": "area",
+   "tag": "U1"
+  },
+  {
+   "name": "55mm Cornice- U2 -Supply and Install",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "55mm Cornice- U1 -Supply and Install",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "Plastering and Sanding Ceiling - U2 -Supply and Install",
+   "kind": "area",
+   "tag": "U2"
+  },
+  {
+   "name": "Plastering and Sanding Ceiling - U1 -Supply and Install",
+   "kind": "area",
+   "tag": "U1"
+  },
+  {
+   "name": "Plastering and Sanding Walls - U2 -Supply and Install = 409m2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Plastering and Sanding Walls - U1 -Supply and Install = 412m2",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Splashback Tiled - U2 - 600mm H",
+   "kind": "wall",
+   "size": 0.6,
+   "tag": "U2"
+  },
+  {
+   "name": "Splashback Tiled - U1 - 600mm H",
+   "kind": "wall",
+   "size": 0.6,
+   "tag": "U1"
+  },
+  {
+   "name": "Wall Tiles - 2440mm H - U2",
+   "kind": "wall",
+   "size": 2.44,
+   "tag": "U2"
+  },
+  {
+   "name": "Wall Tiles - 2440mm H - U1",
+   "kind": "wall",
+   "size": 2.44,
+   "tag": "U1"
+  },
+  {
+   "name": "Soffit Paint Finish - 450mm W-U2",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Soffit Paint Finish - 450mm W-U1",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "Outdoor Ceiling Paint Finish- U2",
+   "kind": "area",
+   "tag": "U2"
+  },
+  {
+   "name": "Outdoor Ceiling Paint Finish- U1",
+   "kind": "area",
+   "tag": "U1"
+  },
+  {
+   "name": "Outdoor Beads and Cornice Paint Finish-U2",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Outdoor Beads and Cornice Paint Finish-U1",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "internal Ceiling Paint Finish - U2",
+   "kind": "area",
+   "tag": "U2"
+  },
+  {
+   "name": "internal Ceiling Paint Finish - U1",
+   "kind": "area",
+   "tag": "U1"
+  },
+  {
+   "name": "Internal Wall Paint Finish-U2 = 409m2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Interna Wall Paint Finish-U1 = 412m2",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Cornice Paint Finish- U2",
+   "kind": "len",
+   "tag": "U2"
+  },
+  {
+   "name": "Cornice Paint Finish- U1",
+   "kind": "len",
+   "tag": "U1"
+  },
+  {
+   "name": "DCP & flashings to comply with 5.7.5 and 5.7.4 NCC Vol 2.",
+   "kind": "count"
+  },
+  {
+   "name": "Internal Wall Paint Finish-U1 = 412m2",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Door Paint Finish = 16m2 - U1",
+   "kind": "count",
+   "tag": "U1"
+  },
+  {
+   "name": "Door Paint Finish = 19.2m2 - U2",
+   "kind": "count",
+   "tag": "U2"
+  },
+  {
+   "name": "Gable Cladding Paint Finish-U2",
+   "kind": "area",
+   "tag": "U2"
+  },
+  {
+   "name": "Gable Cladding Paint Finish-U1",
+   "kind": "area",
+   "tag": "U1"
+  }
+ ]
+}
