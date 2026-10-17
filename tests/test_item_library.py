@@ -107,7 +107,8 @@ r = c.post(f"/api/project/{pid}/items/template", json={"items": [{"name": "Good"
 assert r.status_code == 400 and "length, area" in r.json["error"], r.data
 assert len(c.get(f"/api/project/{pid}").json["lines"]) == before
 assert c.post(f"/api/project/{pid}/items/template", json={}).status_code == 400
-assert c.post("/api/project/boxshall/items/template", json={"template": "residential-house"}).status_code == 400       # a sample project
+if (ROOT / "samples").exists():                                   # the sample projects are not in git, so a fresh clone has none
+    assert c.post("/api/project/boxshall/items/template", json={"template": "residential-house"}).status_code == 400       # a sample project
 assert c.post("/api/project/p-nope/items/template", json={"template": "residential-house"}).status_code == 404
 print("all-or-nothing and refusals: ok")
 

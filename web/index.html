@@ -211,11 +211,12 @@ tr.l.sel td:first-child{box-shadow:inset 2px 0 0 var(--accent)}
 .idlg .seg button.on{border-color:var(--accent);color:var(--ink);background:var(--accent-soft)}
 .idlg .act{display:flex;justify-content:flex-end;gap:8px;margin-top:16px}
 .idlg .box.wide{width:min(580px,calc(100vw - 32px))}
-.tpl{display:flex;flex-direction:column;gap:6px;max-height:40vh;overflow:auto;margin:10px 0 2px}
-.tpl .row{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
-.tpl .row .grow{flex:1;min-width:0}.tpl .row b{font-weight:600;color:var(--ink);font-size:13px}
-.tpl .row small{display:block;color:var(--ink-3);font-size:11.5px;margin-top:2px;line-height:1.4;white-space:normal}
-.tpl .row .x{background:none;border:0;color:var(--ink-3);cursor:pointer;font:inherit;font-size:12px;padding:4px 6px}.tpl .row .x:hover{color:var(--ink)}
+.tlib{display:flex;flex-direction:column;gap:6px;max-height:40vh;overflow:auto;margin:10px 0 2px}
+.tlib .tl-row{display:flex;align-items:center;gap:10px;padding:9px 10px;border:1px solid var(--line);border-radius:10px;background:var(--bg)}
+.tlib .tl-row .grow{flex:1;min-width:0}.tlib .tl-row b{font-weight:600;color:var(--ink);font-size:13px}
+.tlib .tl-row small{display:block;color:var(--ink-3);font-size:11.5px;margin-top:2px;line-height:1.4;white-space:normal}
+.tlib .tl-row .x{background:none;border:0;color:var(--ink-3);cursor:pointer;font:inherit;font-size:12px;padding:4px 6px}.tlib .tl-row .x:hover{color:var(--ink)}
+.idlg .hint{font-size:12.5px;color:var(--ink-2);line-height:1.45;margin:0 0 4px;white-space:normal}
 .idlg .savebar{display:flex;gap:8px}.idlg .savebar input{flex:1}
 .sw{display:inline-block;width:20px;height:20px;border-radius:6px;margin:2px 4px 2px 0;cursor:pointer;border:2px solid transparent;vertical-align:middle}.sw.on{border-color:var(--ink)}
 .itact{margin-top:8px}
@@ -804,8 +805,8 @@ async function templatesDialog(){      // load a ready-made list of items in one
   if(document.querySelector(".idlg"))return;
   const d=document.createElement("div");d.className="idlg";
   d.innerHTML=`<div class="box wide" role="dialog" aria-label="Item templates"><h3>Item templates</h3>
-    <div class="note">A template is a ready-made list of items: their names, how each is measured and a colour. Load one to start a job with them instead of adding items one at a time. Items you already have are left alone.</div>
-    <div class="tpl" id="tplList"><div class="note">Loading...</div></div>
+    <div class="hint">A template is a ready-made list of items: their names, how each is measured and a colour. Load one to start a job with them instead of adding items one at a time. Items you already have are left alone.</div>
+    <div class="tlib" id="tplList"><div class="hint">Loading...</div></div>
     <label for="tpName">Save this project's items as a template for the whole team</label>
     <div class="savebar"><input type="text" id="tpName" maxlength="60" placeholder="Template name" autocomplete="off"><button class="btn" id="tpSave">Save</button></div>
     <div class="act"><button class="btn" id="tpClose">Close</button></div></div>`;
@@ -813,8 +814,8 @@ async function templatesDialog(){      // load a ready-made list of items in one
   const close=()=>d.remove(),list=d.querySelector("#tplList");
   async function refresh(){
     try{const t=await libRequest("/api/library","GET");
-      list.innerHTML=t.length?t.map(x=>`<div class="row"><div class="grow"><b>${esc(x.name)}</b><small>${x.count} items${x.builtin?" &middot; bundled":x.by?" &middot; saved by "+esc(x.by):""}${x.description?"<br>"+esc(x.description):""}</small></div><button class="btn primary" data-load="${esc(x.id)}">Load</button>${x.builtin?"":`<button class="x" data-del="${esc(x.id)}" aria-label="Delete ${esc(x.name)}">Delete</button>`}</div>`).join(""):`<div class="note">No templates yet.</div>`
-    }catch(e){list.innerHTML=`<div class="note">${esc(e.message)}</div>`}}
+      list.innerHTML=t.length?t.map(x=>`<div class="tl-row"><div class="grow"><b>${esc(x.name)}</b><small>${x.count} items${x.builtin?" &middot; bundled":x.by?" &middot; saved by "+esc(x.by):""}${x.description?"<br>"+esc(x.description):""}</small></div><button class="btn primary" data-load="${esc(x.id)}">Load</button>${x.builtin?"":`<button class="x" data-del="${esc(x.id)}" aria-label="Delete ${esc(x.name)}">Delete</button>`}</div>`).join(""):`<div class="hint">No templates yet.</div>`
+    }catch(e){list.innerHTML=`<div class="hint">${esc(e.message)}</div>`}}
   d.addEventListener("click",async e=>{
     if(e.target===d||e.target.id==="tpClose")return close();
     const ld=e.target.closest("[data-load]"),dl=e.target.closest("[data-del]");
